@@ -23,8 +23,9 @@ export default function CreateTrip() {
       await ensureSession();
       const { shareSlug } = await createTrip(tripName.trim(), names, names[0]); // first chip = you
       const url = `${location.origin}/grouptab/t/${shareSlug}`;
-      try { await navigator.clipboard.writeText(url); } catch { /* clipboard can fail; link is shareable from the trip header */ }
-      toast('Link copied — paste it in the group chat');
+      let copied = false;
+      try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard can fail; link is shareable from the trip header */ }
+      toast(copied ? 'Link copied — paste it in the group chat' : 'Trip created — share it with the ↗ button');
       navigate(`/t/${shareSlug}`);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create trip');
