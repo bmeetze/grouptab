@@ -15,11 +15,15 @@ export function useTripData(slug: string) {
     try {
       const fresh = await fetchTripData(slug);
       setData(fresh); setError(null); setStale(false);
-      localStorage.setItem(cacheKey(slug), JSON.stringify(fresh));
+      try { localStorage.setItem(cacheKey(slug), JSON.stringify(fresh)); } catch { /* cache write is best-effort */ }
     } catch (e) {
-      const cached = localStorage.getItem(cacheKey(slug));
-      if (cached) { setData(JSON.parse(cached)); setStale(true); }
-      else setError(e instanceof Error ? e.message : 'Failed to load trip');
+      try {
+        const cached = localStorage.getItem(cacheKey(slug));
+        if (cached) { setData(JSON.parse(cached)); setStale(true); }
+        else setError(e instanceof Error ? e.message : 'Failed to load trip');
+      } catch {
+        setError(e instanceof Error ? e.message : 'Failed to load trip');
+      }
     } finally {
       setLoading(false);
     }
