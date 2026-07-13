@@ -90,9 +90,17 @@ create policy trips_member_select on public.trips for select using (is_member(id
 create policy trips_member_update on public.trips for update
   using (is_member(id)) with check (is_member(id));   -- close/reopen; friends-trust
 
+-- Direct updates may only close/reopen; creator reassignment is not a thing.
+revoke update on public.trips from anon, authenticated;
+grant update (status) on public.trips to authenticated;
+
 create policy parts_member_select on public.participants for select using (is_member(trip_id));
 create policy parts_self_update on public.participants for update
-  using (claimed_by = auth.uid());                    -- all-in toggle + release own claim
+  using (claimed_by = auth.uid());                    -- all-in toggle (column-scoped by grant below)
+
+-- Direct updates may only touch the readiness flag; claims move via RPCs only.
+revoke update on public.participants from anon, authenticated;
+grant update (all_expenses_in) on public.participants to authenticated;
 
 create policy exp_member_select on public.expenses for select using (is_member(trip_id));
 create policy exp_member_update on public.expenses for update
@@ -100,6 +108,11 @@ create policy exp_member_update on public.expenses for update
 create policy exp_member_delete on public.expenses for delete
   using (is_member(trip_id) and trip_is_active(trip_id));
 -- no INSERT policy: inserting expenses goes through add_expense() only
+
+-- Direct updates may only flag/resolve; edits go through update_expense() so
+-- shares always sum to the amount.
+revoke update on public.expenses from anon, authenticated;
+grant update (flagged, flagged_by_participant_id) on public.expenses to authenticated;
 
 create policy shares_member_select on public.expense_shares for select
   using (is_member((select trip_id from public.expenses e where e.id = expense_id)));
@@ -253,7 +266,7 @@ returns text language sql security definer set search_path = public as $$
 $$;
 
 -- ============ GRANTS ============
-revoke execute on all functions in schema public from anon, authenticated;
+revoke execute on all functions in schema public from public;
 grant execute on function public.get_trip_by_slug(text) to anon, authenticated;
 grant execute on function public.keepalive() to anon, authenticated;
 grant execute on function public.create_trip(text, text[], text) to authenticated;
