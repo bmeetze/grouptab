@@ -47,5 +47,9 @@ const { data: creatorTakeoverData, error: creatorTakeoverErr } = await bob.from(
 check("bob cannot touch alice's trip row",
   creatorTakeoverErr !== null || (creatorTakeoverData ?? []).length === 0);
 
+const { error: ownCreatorErr } = await bob.from('trips')
+  .update({ creator_participant_id: bobParts[0].id }).eq('id', bTrip.trip_id).select();
+check('bob cannot reassign creator on his own trip', ownCreatorErr !== null);
+
 console.log(failures === 0 ? '\nRLS check: ALL PASS' : `\nRLS check: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
