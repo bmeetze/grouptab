@@ -1,0 +1,44 @@
+@import '@fontsource/instrument-sans/400.css';
+@import '@fontsource/instrument-sans/500.css';
+@import '@fontsource/instrument-sans/600.css';
+@import '@fontsource/instrument-sans/700.css';
+
+:root {
+  --bg: #f4f6f4; --surface: #ffffff;
+  --ink: #16241d; --ink-soft: #5c6d64; --ink-faint: #8a978e;
+  --disabled: #b9c2bb; --border: #e2e8e3; --border-strong: #d3dcd6;
+  --accent: #1f6f54; --accent-tint: #e3efe9;
+  --negative: #b4653a; --negative-bar: #c98a4b;
+  --warn-fg: #a06b1f; --warn-bg: #f4e8d0;
+  --dark: #16241d;
+  --shadow-card: 0 1px 2px rgba(22, 36, 29, .05);
+  --shadow-fab: 0 6px 16px rgba(31, 111, 84, .4);
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body, #root { height: 100%; }
+body {
+  font-family: 'Instrument Sans', sans-serif;
+  background: var(--bg); color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+#root { max-width: 430px; min-width: 320px; margin: 0 auto; }
+
+.screen { padding: 20px 20px calc(84px + env(safe-area-inset-bottom)); min-height: 100%; }
+.card { background: var(--surface); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-card); }
+.section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.btn {
+  display: block; width: 100%; min-height: 48px; border: none; border-radius: 16px;
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:disabled { background: var(--disabled); cursor: default; }
+.btn-outline { background: var(--surface); color: var(--accent); border: 1.5px solid var(--border-strong); }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;
+  border-radius: 14px; border: 1.5px solid var(--border-strong);
+  background: var(--surface); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
