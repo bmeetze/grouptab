@@ -61,9 +61,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export function TabBar({ slug, active }: { slug: string; active: 'home' | 'expenses' | 'settle' }) {
   const tab = (to: string, key: string, label: string) => (
     <Link to={to} style={{
-      flex: 1, textAlign: 'center', padding: '12px 0', textDecoration: 'none',
+      flex: 1, textAlign: 'center', padding: '15px 0', textDecoration: 'none',
       fontSize: 12.5, fontWeight: active === key ? 700 : 500,
       color: active === key ? 'var(--accent)' : 'var(--ink-faint)',
+      minHeight: 44,
     }}>{label}</Link>
   );
   return (
