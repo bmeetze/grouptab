@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -22,4 +22,10 @@ export default defineConfig({
       workbox: { navigateFallback: '/grouptab/index.html' },
     }),
   ],
+  test: {
+    // e2e/ holds Playwright specs (run via `npx playwright test`), not
+    // vitest unit tests — without this, vitest's default *.spec.ts glob
+    // picks them up and fails outside a browser/webServer context.
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
 });
