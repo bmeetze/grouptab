@@ -59,7 +59,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
     setTogglePending(true);
     try {
       await setAllIn(you.id, !you.allExpensesIn);
-      refetch();
+      await refetch();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not update');
     } finally {
@@ -75,7 +75,13 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
     try {
       await markPaid(trip.id, fromId, toId, amountCents);
       toast('Marked paid');
-      refetch();
+      // Await the refetch before releasing the lock (finally below) — the
+      // lock is what keeps every "Mark paid" button disabled, so releasing
+      // it before the fresh transfer list lands would let a second tap fire
+      // another markPaid insert against the still-stale (pre-refetch) list.
+      // There's no unique constraint on settlements, so that would silently
+      // double-record the same transfer.
+      await refetch();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not mark paid');
     } finally {
@@ -90,7 +96,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
     setClosing(true);
     try {
       await closeTrip(trip.id);
-      refetch();
+      await refetch();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not close trip');
     } finally {
@@ -168,7 +174,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
               <button onClick={() => void handleToggle()} disabled={togglePending} style={{
                 flex: 'none', background: 'none', border: 'none', font: 'inherit', fontSize: 11,
                 color: 'var(--ink-soft)', textDecoration: 'underline', cursor: togglePending ? 'default' : 'pointer',
-                minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 4px',
+                minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
               }}>undo</button>
             </span>
           </Ribbon>

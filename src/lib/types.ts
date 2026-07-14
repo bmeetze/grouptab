@@ -4,4 +4,4 @@ export interface Comment { id: string; participantId: string; body: string; crea
 export interface Expense { id: string; payerParticipantId: string; description: string; amountCents: number; flagged: boolean; flaggedByParticipantId: string | null; createdAt: string; updatedAt: string | null; shares: Record<string, number>; comments: Comment[]; }
 export interface Settlement { id: string; fromParticipantId: string; toParticipantId: string; amountCents: number; createdAt: string; }
 export interface TripData { trip: Trip; participants: Participant[]; expenses: Expense[]; settlements: Settlement[]; you: Participant | null; }
-export interface ScreenProps { slug: string; data: TripData; refetch: () => void; stale: boolean; }
+export interface ScreenProps { slug: string; data: TripData; refetch: () => Promise<void>; stale: boolean; }
