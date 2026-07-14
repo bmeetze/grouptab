@@ -282,3 +282,14 @@ grant execute on function public.trip_is_active(uuid) to anon, authenticated;
 -- ============ REALTIME ============
 alter publication supabase_realtime add table
   public.trips, public.participants, public.expenses, public.comments, public.settlements;
+
+-- Default replica identity only includes the primary key in a DELETE's old
+-- row payload. useTripData.ts's realtime filter for expenses is
+-- `trip_id=eq.<id>` (not `id=eq.<id>`), so without FULL, a deleted row's
+-- payload has no trip_id for the filter to match and the client-visible
+-- delete_expense() never triggers a live refetch on other connected
+-- clients (INSERT/UPDATE are unaffected — Postgres always logs the full new
+-- row for those regardless of replica identity). expenses is the only table
+-- with a client-facing delete path today (Task 10); add FULL here too if a
+-- future feature deletes participants/settlements/comments rows directly.
+alter table public.expenses replica identity full;
