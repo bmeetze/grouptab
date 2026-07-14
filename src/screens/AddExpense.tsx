@@ -21,15 +21,16 @@ function displayName(p: Participant): string {
   return p.isYou ? 'You' : p.name;
 }
 
-// Strips a typed value down to at most one '.' and at most 2 decimal digits —
-// the same shape rule the on-screen/physical keypad enforces for the amount.
+// Strips a typed value down to at most one '.', at most 2 decimal digits,
+// and no redundant leading zeros ("00" -> "0", "05" -> "5") — the same shape
+// rules the on-screen/physical keypad enforces for the amount.
 function sanitizeDecimalString(raw: string): string {
   let v = raw.replace(/[^0-9.]/g, '');
   const dot = v.indexOf('.');
   if (dot !== -1) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
-  const [intPart, decPart] = v.split('.');
-  if (decPart !== undefined && decPart.length > 2) v = `${intPart}.${decPart.slice(0, 2)}`;
-  return v;
+  const parts = v.split('.');
+  const intPart = parts[0].replace(/^0+(?=\d)/, '');
+  return parts.length === 1 ? intPart : `${intPart}.${parts[1].slice(0, 2)}`;
 }
 
 // Ported from the prototype's tapKey: one '.' max, ≤2 decimals, replaces a
@@ -87,8 +88,12 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
   // happens to match are indistinguishable), so custom-with-exact-values is
   // the only prefill that can never silently change what gets saved back.
   const [splitMode, setSplitMode] = useState<SplitMode>(initial ? 'custom' : 'equal');
-  const [splitIds, setSplitIds] = useState<string[]>(
-    initial ? Object.keys(initial.shares) : participants.map(p => p.id),
+  // Included set derives from participants (canonical order), not from the
+  // shares object's key order.
+  const [splitIds, setSplitIds] = useState<string[]>(() =>
+    initial
+      ? participants.filter(p => p.id in initial.shares).map(p => p.id)
+      : participants.map(p => p.id),
   );
   const [custom, setCustom] = useState<Record<string, string>>(() => {
     if (!initial) return {};
@@ -129,8 +134,14 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
     });
   }
 
+  // Synchronous re-entrancy lock: setSaving(true) doesn't take effect until
+  // the next render, so two rapid triggers (double-tap Save, Enter
+  // auto-repeat) would otherwise both pass the canSave check in the same
+  // closure and fire two add_expense RPCs (duplicate expense).
+  const savingRef = useRef(false);
   async function handleSave() {
-    if (!canSave) return;
+    if (savingRef.current || !canSave) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       let shares: Record<string, number>;
@@ -147,26 +158,28 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not save');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   // Physical keyboard: digits/'.' feed the same amount-string builder as the
-  // on-screen keys; Backspace trims it; Enter saves when valid — but only
-  // outside text fields (description / custom $ inputs), which need normal
-  // typing (including their own Backspace) left alone. Enter is always
-  // intercepted so it can submit from inside those fields too.
+  // on-screen keys; Backspace trims it; Enter saves when valid — but never
+  // when a focused interactive element (picker row, mode chip, avatar toggle,
+  // text input) should handle the key itself: hijacking Enter there would
+  // fire a save with pre-activation state instead of activating the control.
   const latest = useRef({ canSave, handleSave });
   useEffect(() => {
     latest.current = { canSave, handleSave };
   });
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
       if (e.key === 'Enter') {
+        if (target?.closest('button, a, input, select, textarea')) return; // native activation wins
         if (latest.current.canSave) { e.preventDefault(); void latest.current.handleSave(); }
         return;
       }
-      const target = e.target as HTMLElement | null;
       const isTypingField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (isTypingField) return;
       if (e.key === 'Backspace') {
@@ -221,6 +234,7 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
           <button onClick={() => setSplitMode(m => (m === 'equal' ? 'custom' : 'equal'))} style={{
             cursor: 'pointer', background: 'var(--accent-tint)', border: 'none', borderRadius: 12,
             padding: '6px 13px', fontWeight: 700, color: 'var(--accent)', fontSize: 12.5, font: 'inherit',
+            minHeight: 44, display: 'inline-flex', alignItems: 'center',
           }}>
             Split {splitMode === 'equal' ? 'equally' : 'custom'} ⇄
           </button>
@@ -274,9 +288,9 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
                       onChange={e => setCustom(prev => ({ ...prev, [p.id]: sanitizeDecimalString(e.target.value) }))}
                       placeholder="0.00" inputMode="decimal"
                       style={{
-                        width: 84, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
+                        width: 84, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
                         borderRadius: 10, padding: '9px 10px', fontSize: 13.5, fontWeight: 600,
-                        font: 'inherit', color: 'var(--ink)',
+                        font: 'inherit', color: 'var(--ink)', boxSizing: 'border-box',
                       }}
                     />
                   </div>
