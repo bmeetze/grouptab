@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchMyTrips } from '../data/api';
 import { computeBalances } from '../lib/money';
@@ -20,13 +20,32 @@ function netFor(data: TripData): number {
 
 export default function Home() {
   const [trips, setTrips] = useState<TripRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const cancelledRef = useRef(false);
+
+  function load() {
+    setError(null);
+    fetchMyTrips()
+      .then(rows => { if (!cancelledRef.current) setTrips(rows); })
+      .catch(e => { if (!cancelledRef.current) setError(e instanceof Error ? e.message : 'Could not load your trips'); });
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    fetchMyTrips().then(rows => { if (!cancelled) setTrips(rows); });
-    return () => { cancelled = true; };
+    cancelledRef.current = false;
+    load();
+    return () => { cancelledRef.current = true; };
   }, []);
+
+  if (error !== null && trips === null) {
+    return (
+      <div className="screen">
+        <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.3px' }}>GroupTab</div>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 24 }}>Couldn't load your trips.</p>
+        <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={load}>Try again</button>
+      </div>
+    );
+  }
 
   if (trips === null) {
     return (
