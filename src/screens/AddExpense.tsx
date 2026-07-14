@@ -4,7 +4,7 @@ import type { ScreenProps, TripData, Participant } from '../lib/types';
 import { computeEqualSplit } from '../lib/money';
 import { fmtCents } from '../lib/format';
 import { addExpense } from '../data/api';
-import { Avatar, participantIndex, useToast } from '../ui/components';
+import { Avatar, Ribbon, participantIndex, useToast } from '../ui/components';
 import { useOnline } from '../data/useOnline';
 
 export interface ExpenseFormValues {
@@ -144,6 +144,7 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
   async function handleSave() {
     if (savingRef.current || !canSave) return;
     if (!online) { toast("You're offline — writes are disabled"); return; }
+    if (data.trip.status === 'closed') { toast('This trip is closed — read-only'); return; }
     savingRef.current = true;
     setSaving(true);
     try {
@@ -339,6 +340,25 @@ export default function AddExpense({ slug, data, refetch }: ScreenProps) {
     toast(`Added ${fmtCents(v.amountCents)}`);
     refetch();
     navigate(`/t/${slug}`);
+  }
+
+  if (data.trip.status === 'closed') {
+    return (
+      <div style={{
+        minHeight: '100%', display: 'flex', flexDirection: 'column', gap: 14,
+        padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', boxSizing: 'border-box',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={() => navigate(`/t/${slug}`)} aria-label="Close" style={{
+            background: 'none', border: 'none', font: 'inherit', fontSize: 19, color: 'var(--ink-soft)',
+            cursor: 'pointer', padding: '2px 8px 2px 0', minHeight: 44, display: 'inline-flex', alignItems: 'center',
+          }}>✕</button>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>New expense</span>
+          <span style={{ width: 20 }} />
+        </div>
+        <Ribbon>🔒 Trip closed · read-only</Ribbon>
+      </div>
+    );
   }
 
   return <ExpenseForm data={data} saveLabel="Save expense" onSave={handleSave} />;
