@@ -5,6 +5,9 @@ import { fmtCents } from '../lib/format';
 import { Avatar, avatarColors, participantIndex, useToast } from '../ui/components';
 import { addComment, deleteExpense, setFlag, updateExpense } from '../data/api';
 import { ExpenseForm, type ExpenseFormValues } from './AddExpense';
+import { useOnline } from '../data/useOnline';
+
+const OFFLINE_MSG = "You're offline — writes are disabled";
 
 // Same shape as TripFeed's timeAgo — kept screen-local per the plan's
 // structure (screens don't import helpers from each other).
@@ -27,7 +30,9 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
   const { expenseId = '' } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const online = useOnline();
   const { participants, you } = data;
+  const closed = data.trip.status === 'closed';
   const expense = data.expenses.find(e => e.id === expenseId);
 
   const [editing, setEditing] = useState(false);
@@ -71,6 +76,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
 
   const toggleFlag = async () => {
     if (flagBusyRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     flagBusyRef.current = true;
     setFlagBusy(true);
     try {
@@ -87,6 +93,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
   const sendComment = async () => {
     const body = commentDraft.trim();
     if (!body || commentSendingRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     commentSendingRef.current = true;
     setCommentSending(true);
     try {
@@ -103,6 +110,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
 
   const handleDelete = async () => {
     if (deletingRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     deletingRef.current = true;
     setDeleting(true);
     try {
@@ -160,10 +168,14 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
           color: 'var(--ink-soft)', textDecoration: 'none', fontSize: 17, padding: '2px 8px 2px 0',
         }}>←</Link>
         <span style={{ fontSize: 14, fontWeight: 600 }}>Expense</span>
-        <button onClick={() => setEditing(true)} style={{
-          background: 'none', border: 'none', font: 'inherit', fontSize: 13, color: 'var(--ink-soft)',
-          cursor: 'pointer', minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '2px 0 2px 8px',
-        }}>✎ edit</button>
+        {closed ? (
+          <span style={{ width: 44 }} />
+        ) : (
+          <button onClick={() => setEditing(true)} style={{
+            background: 'none', border: 'none', font: 'inherit', fontSize: 13, color: 'var(--ink-soft)',
+            cursor: 'pointer', minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '2px 0 2px 8px',
+          }}>✎ edit</button>
+        )}
       </header>
 
       <div style={{ marginTop: 14, textAlign: 'center' }}>
@@ -185,18 +197,22 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
         }}>
           <span style={{ fontSize: 12.5, color: 'var(--warn-fg)', fontWeight: 600 }}>⚑ Flagged by {flaggedByName}</span>
-          <button disabled={flagBusy} onClick={() => void toggleFlag()} style={{
-            flex: 'none', background: 'var(--surface)', border: 'none', borderRadius: 12, padding: '6px 13px',
-            fontSize: 12, fontWeight: 700, color: 'var(--warn-fg)', cursor: 'pointer', font: 'inherit',
-            minHeight: 44, display: 'inline-flex', alignItems: 'center',
-          }}>Resolve</button>
+          {!closed && (
+            <button disabled={flagBusy} onClick={() => void toggleFlag()} style={{
+              flex: 'none', background: 'var(--surface)', border: 'none', borderRadius: 12, padding: '6px 13px',
+              fontSize: 12, fontWeight: 700, color: 'var(--warn-fg)', cursor: 'pointer', font: 'inherit',
+              minHeight: 44, display: 'inline-flex', alignItems: 'center',
+            }}>Resolve</button>
+          )}
         </div>
       ) : (
-        <button disabled={flagBusy} onClick={() => void toggleFlag()} style={{
-          marginTop: 12, width: '100%', border: '1px solid var(--border)', background: 'var(--surface)',
-          borderRadius: 16, padding: '11px 14px', textAlign: 'center', fontSize: 12.5, color: 'var(--ink-soft)',
-          fontWeight: 600, cursor: 'pointer', font: 'inherit', minHeight: 44,
-        }}>⚑ Flag for review</button>
+        !closed && (
+          <button disabled={flagBusy} onClick={() => void toggleFlag()} style={{
+            marginTop: 12, width: '100%', border: '1px solid var(--border)', background: 'var(--surface)',
+            borderRadius: 16, padding: '11px 14px', textAlign: 'center', fontSize: 12.5, color: 'var(--ink-soft)',
+            fontWeight: 600, cursor: 'pointer', font: 'inherit', minHeight: 44,
+          }}>⚑ Flag for review</button>
+        )
       )}
 
       <div className="card" style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -223,31 +239,33 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
             </div>
           );
         })}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            value={commentDraft}
-            onChange={e => setCommentDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void sendComment(); } }}
-            placeholder="Add a comment…"
-            style={{
-              flex: 1, minWidth: 0, background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 16, padding: '11px 14px', fontSize: 13, font: 'inherit', color: 'var(--ink)',
-            }}
-          />
-          <button
-            aria-label="Send comment"
-            disabled={commentSending || !commentDraft.trim()}
-            onClick={() => void sendComment()}
-            style={{
-              flex: 'none', width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)',
-              color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 17, cursor: 'pointer', opacity: commentDraft.trim() ? 1 : 0.6,
-            }}
-          >↑</button>
-        </div>
+        {!closed && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              value={commentDraft}
+              onChange={e => setCommentDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void sendComment(); } }}
+              placeholder="Add a comment…"
+              style={{
+                flex: 1, minWidth: 0, background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 16, padding: '11px 14px', fontSize: 13, font: 'inherit', color: 'var(--ink)',
+              }}
+            />
+            <button
+              aria-label="Send comment"
+              disabled={commentSending || !commentDraft.trim()}
+              onClick={() => void sendComment()}
+              style={{
+                flex: 'none', width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)',
+                color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 17, cursor: 'pointer', opacity: commentDraft.trim() ? 1 : 0.6,
+              }}
+            >↑</button>
+          </div>
+        )}
       </div>
 
-      {confirmingDelete ? (
+      {!closed && (confirmingDelete ? (
         <div style={{
           marginTop: 20, background: 'var(--surface)', border: '1.5px solid var(--negative)',
           borderRadius: 16, padding: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -272,7 +290,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
           textAlign: 'center', fontSize: 13, color: 'var(--negative)', fontWeight: 600,
           cursor: 'pointer', minHeight: 44,
         }}>Delete expense…</button>
-      )}
+      ))}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { computeBalances } from '../lib/money';
 import { fmtCents } from '../lib/format';
-import { Avatar, TabBar, participantIndex, useToast } from '../ui/components';
+import { Avatar, Ribbon, TabBar, participantIndex, useToast } from '../ui/components';
+import { OfflineBanner } from '../ui/OfflineBanner';
+import { useOnline } from '../data/useOnline';
 import type { ScreenProps } from '../lib/types';
 
 // "just now" under 60s, then minutes/hours/days ("4m ago", "4h ago", "2d ago").
@@ -18,7 +20,9 @@ export function timeAgo(iso: string): string {
 
 export default function TripFeed({ slug, data, stale }: ScreenProps) {
   const toast = useToast();
+  const online = useOnline();
   const { trip, participants, expenses, settlements, you } = data;
+  const closed = trip.status === 'closed';
 
   const balances = computeBalances(
     participants.map(p => p.id),
@@ -30,7 +34,9 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
 
   const heroColor = bal > 0 ? 'var(--accent)' : bal < 0 ? 'var(--negative)' : 'var(--ink-faint)';
   const owedLabel = bal > 0 ? "you're owed" : bal < 0 ? 'you owe' : "you're even";
-  const showFab = trip.status !== 'closed' && !stale;
+  // Closed and stale already blocked writes; extend the same gate to offline
+  // so the FAB never invites a tap that can't be saved.
+  const showFab = !closed && !stale && online;
 
   async function onShare() {
     const url = `${location.origin}/grouptab/t/${slug}`;
@@ -41,6 +47,7 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
 
   return (
     <div className="screen">
+      <OfflineBanner stale={stale} />
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <Link to="/" style={{
@@ -57,6 +64,12 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
           <button className="chip" onClick={() => void onShare()} style={{ color: 'var(--ink-soft)' }}>share ↗</button>
         </div>
       </header>
+
+      {closed && (
+        <div style={{ marginTop: 12 }}>
+          <Ribbon>🔒 Trip closed · read-only</Ribbon>
+        </div>
+      )}
 
       <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.5px', marginTop: 8, color: heroColor }}>
         {fmtCents(Math.abs(bal))}

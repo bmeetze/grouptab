@@ -1,9 +1,23 @@
 import { useRef, useState } from 'react';
-import type { Participant, ScreenProps } from '../lib/types';
+import type { Participant, ScreenProps, TripData } from '../lib/types';
 import { computeBalances, simplifyDebts } from '../lib/money';
 import { fmtCents, fmtSigned } from '../lib/format';
 import { setAllIn, markPaid, closeTrip } from '../data/api';
+import { tripToCsv } from '../lib/csv';
 import { Avatar, participantIndex, Ribbon, TabBar, useToast } from '../ui/components';
+import { OfflineBanner } from '../ui/OfflineBanner';
+import { useOnline } from '../data/useOnline';
+
+const OFFLINE_MSG = "You're offline — writes are disabled";
+
+function downloadCsv(data: TripData) {
+  const blob = new Blob([tripToCsv(data)], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${data.trip.name.replace(/[^\w-]+/g, '-')}-expenses.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 // Same convention as TripFeed/ExpenseDetail: screens don't import helpers
 // from each other, so this is duplicated rather than shared.
@@ -11,8 +25,9 @@ function displayName(p: Participant): string {
   return p.isYou ? 'You' : p.name;
 }
 
-export default function Settle({ slug, data, refetch }: ScreenProps) {
+export default function Settle({ slug, data, refetch, stale }: ScreenProps) {
   const toast = useToast();
+  const online = useOnline();
   const { trip, participants, expenses, settlements } = data;
   const closed = trip.status === 'closed';
 
@@ -55,6 +70,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
 
   async function handleToggle() {
     if (closed || toggleBusyRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     toggleBusyRef.current = true;
     setTogglePending(true);
     try {
@@ -70,6 +86,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
 
   async function handleMarkPaid(fromId: string, toId: string, amountCents: number) {
     if (closed || payBusyRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     payBusyRef.current = true;
     setPayingKey(`${fromId}:${toId}`);
     try {
@@ -92,6 +109,7 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
 
   async function handleClose() {
     if (closed || closeBusyRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
     closeBusyRef.current = true;
     setClosing(true);
     try {
@@ -107,7 +125,14 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
 
   return (
     <div className="screen">
-      <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Settle up</div>
+      <OfflineBanner stale={stale} />
+      <div style={{ fontSize: 17, fontWeight: 700, marginBottom: closed ? 12 : 16 }}>Settle up</div>
+
+      {closed && (
+        <div style={{ marginBottom: 14 }}>
+          <Ribbon>🔒 Trip closed · read-only</Ribbon>
+        </div>
+      )}
 
       {showAllInCard && (
         <div className="card" style={{
@@ -317,6 +342,10 @@ export default function Settle({ slug, data, refetch }: ScreenProps) {
           </div>
         )
       )}
+
+      <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={() => downloadCsv(data)}>
+        Download CSV
+      </button>
 
       <TabBar slug={slug} active="settle" />
     </div>

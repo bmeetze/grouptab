@@ -5,6 +5,7 @@ import { computeEqualSplit } from '../lib/money';
 import { fmtCents } from '../lib/format';
 import { addExpense } from '../data/api';
 import { Avatar, participantIndex, useToast } from '../ui/components';
+import { useOnline } from '../data/useOnline';
 
 export interface ExpenseFormValues {
   payerParticipantId: string;
@@ -74,6 +75,7 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
   const { participants, you } = data;
   const navigate = useNavigate();
   const toast = useToast();
+  const online = useOnline();
 
   // TripGate guarantees data.you is set before this ever renders; the `?? ''`
   // is just to satisfy `Participant | null`'s type without an early return
@@ -141,6 +143,7 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
   const savingRef = useRef(false);
   async function handleSave() {
     if (savingRef.current || !canSave) return;
+    if (!online) { toast("You're offline — writes are disabled"); return; }
     savingRef.current = true;
     setSaving(true);
     try {
