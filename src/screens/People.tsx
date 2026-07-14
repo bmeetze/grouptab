@@ -25,7 +25,7 @@ export default function People({ slug, data, refetch }: ScreenProps) {
   return (
     <div className="screen">
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <Link to={`/t/${slug}`} style={{ color: 'var(--ink-soft)', textDecoration: 'none', fontSize: 17, padding: '4px 8px 4px 0' }}>←</Link>
+        <Link to={`/t/${slug}`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--ink-soft)', textDecoration: 'none', fontSize: 17, padding: '4px 8px 4px 0' }}>←</Link>
         <span style={{ fontSize: 15, fontWeight: 600 }}>People</span>
       </header>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -42,11 +42,12 @@ export default function People({ slug, data, refetch }: ScreenProps) {
                 </div>
               </div>
               {showAction && (
-                <button disabled={releasing === p.id} onClick={() => void release(p.id)}
+                <button disabled={releasing !== null} onClick={() => void release(p.id)}
                   style={{
-                    flex: 'none', fontSize: 12, fontWeight: 700, color: 'var(--negative)',
-                    border: '1.5px solid #e8d5c8', borderRadius: 12, padding: '7px 12px',
-                    background: 'var(--surface)', font: 'inherit', cursor: releasing === p.id ? 'default' : 'pointer',
+                    flex: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 44,
+                    fontSize: 12, fontWeight: 700, color: 'var(--negative)',
+                    border: '1.5px solid var(--border-strong)', borderRadius: 12, padding: '7px 12px',
+                    background: 'var(--surface)', font: 'inherit', cursor: releasing !== null ? 'default' : 'pointer',
                     opacity: releasing === p.id ? 0.6 : 1,
                   }}>
                   {isYou ? 'Release my claim' : 'Release'}
