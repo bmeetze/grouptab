@@ -164,10 +164,11 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
   }
 
   // Physical keyboard: digits/'.' feed the same amount-string builder as the
-  // on-screen keys; Backspace trims it; Enter saves when valid — but never
-  // when a focused interactive element (picker row, mode chip, avatar toggle,
-  // text input) should handle the key itself: hijacking Enter there would
-  // fire a save with pre-activation state instead of activating the control.
+  // on-screen keys; Backspace trims it; Enter saves when valid — including
+  // from inside the description/custom text inputs (inputs don't consume
+  // Enter), but never when a focused activatable control (picker row, mode
+  // chip, avatar toggle) should handle the key itself: hijacking Enter there
+  // would fire a save with pre-activation state instead of activating it.
   const latest = useRef({ canSave, handleSave });
   useEffect(() => {
     latest.current = { canSave, handleSave };
@@ -176,7 +177,7 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (e.key === 'Enter') {
-        if (target?.closest('button, a, input, select, textarea')) return; // native activation wins
+        if (target?.closest('button, a, select, textarea')) return; // native activation wins
         if (latest.current.canSave) { e.preventDefault(); void latest.current.handleSave(); }
         return;
       }
