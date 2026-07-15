@@ -8,11 +8,13 @@ export default function App() {
   return (
     <BrowserRouter basename="/grouptab/">
       <ToastProvider>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/new" element={<CreateTrip />} />
-          <Route path="/t/:slug/*" element={<TripGate />} />
-        </Routes>
+        <div className="app-scroll">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/new" element={<CreateTrip />} />
+            <Route path="/t/:slug/*" element={<TripGate />} />
+          </Routes>
+        </div>
       </ToastProvider>
     </BrowserRouter>
   );

@@ -124,7 +124,7 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
 
       {showFab && (
         <Link to={`/t/${slug}/add`} style={{
-          position: 'fixed', right: 20, bottom: 'calc(64px + env(safe-area-inset-bottom))',
+          position: 'absolute', right: 20, bottom: 'calc(64px + env(safe-area-inset-bottom))',
           width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
           boxShadow: 'var(--shadow-fab)', textDecoration: 'none', zIndex: 20,

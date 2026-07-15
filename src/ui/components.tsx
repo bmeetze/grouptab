@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {msg && (
         <div style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
           background: 'var(--dark)', color: '#fff', padding: '10px 18px',
           borderRadius: 14, fontSize: 13, fontWeight: 500, zIndex: 100,
           maxWidth: 'calc(100% - 40px)', whiteSpace: 'nowrap', overflow: 'hidden',
@@ -69,8 +69,8 @@ export function TabBar({ slug, active }: { slug: string; active: 'home' | 'expen
   );
   return (
     <nav style={{
-      position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-      width: '100%', maxWidth: 430, display: 'flex', background: 'var(--surface)',
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      display: 'flex', background: 'var(--surface)',
       borderTop: '1px solid var(--border)', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 10,
     }}>
       {tab('/', 'home', '⌂ Home')}
