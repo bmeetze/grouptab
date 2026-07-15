@@ -36,6 +36,9 @@ check('direct expense insert is denied (RPC-only)', insErr !== null);
 const { data: joinView } = await bob.rpc('get_trip_by_slug', { p_slug: aTrip.share_slug });
 check('link (slug) still grants the join view — capability model', joinView?.trip?.name === 'RLS check A');
 
+const { error: addPartErr } = await bob.rpc('add_participant', { p_trip_id: aTrip.trip_id, p_name: 'Intruder' });
+check("bob cannot add a participant to alice's trip", addPartErr !== null);
+
 const { data: bobParts } = await bob.from('participants').select('id').eq('trip_id', bTrip.trip_id);
 const { data: reparentData, error: reparentErr } = await bob.from('participants')
   .update({ trip_id: aTrip.trip_id }).eq('id', bobParts[0].id).select();

@@ -7,6 +7,28 @@ import { Avatar, participantIndex } from '../ui/components';
 import type { Trip, TripData } from '../lib/types';
 
 type TripRow = { trip: Trip; data: TripData };
+type CachedTripRow = { slug: string; name: string };
+
+// Scans localStorage for per-trip caches written by useTripData's cacheKey
+// (`gt:trip:<slug>`) so Home has somewhere to send the user when
+// fetchMyTrips fails offline — the trip screens then serve from their own
+// cache once navigated to.
+function loadCachedTrips(): CachedTripRow[] {
+  const out: CachedTripRow[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('gt:trip:')) continue;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const slug: string | undefined = parsed?.trip?.shareSlug ?? key.slice('gt:trip:'.length);
+      const name: string | undefined = parsed?.trip?.name;
+      if (slug && name) out.push({ slug, name });
+    } catch { /* skip unparseable cache entries */ }
+  }
+  return out;
+}
 
 function netFor(data: TripData): number {
   if (!data.you) return 0;
@@ -38,6 +60,31 @@ export default function Home() {
   }, []);
 
   if (error !== null && trips === null) {
+    const cached = loadCachedTrips();
+    if (cached.length > 0) {
+      return (
+        <div className="screen">
+          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.3px' }}>GroupTab</div>
+          <div style={{ background: 'var(--dark)', color: '#fff', borderRadius: 14,
+            padding: '10px 14px', fontSize: 12.5, fontWeight: 500, margin: '16px 0' }}>
+            ⚠ You're offline — showing cached trips
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {cached.map(c => (
+              <Link key={c.slug} to={`/t/${c.slug}`} style={{
+                background: 'var(--surface)', borderRadius: 16, padding: '14px 16px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                textDecoration: 'none', color: 'inherit', minHeight: 44, boxSizing: 'border-box',
+              }}>
+                <span style={{ fontSize: 14.5, fontWeight: 600 }}>{c.name}</span>
+                <span style={{ fontSize: 14, color: 'var(--ink-faint)' }}>→</span>
+              </Link>
+            ))}
+          </div>
+          <button className="btn btn-outline" style={{ marginTop: 16 }} onClick={load}>Try again</button>
+        </div>
+      );
+    }
     return (
       <div className="screen">
         <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.3px' }}>GroupTab</div>

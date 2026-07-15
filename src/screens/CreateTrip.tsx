@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ensureSession } from '../data/session';
 import { createTrip } from '../data/api';
@@ -17,7 +17,14 @@ export default function CreateTrip() {
   );
   const canCreate = tripName.trim().length > 0 && names.length >= 1 && !saving;
 
+  // Synchronous re-entrancy lock: setSaving(true) doesn't take effect until
+  // the next render, so two rapid taps on "Create & copy link" would
+  // otherwise both pass the canCreate check in the same closure and fire
+  // two create_trip RPCs (duplicate trip).
+  const savingRef = useRef(false);
   async function onCreate() {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await ensureSession();
@@ -29,6 +36,8 @@ export default function CreateTrip() {
       navigate(`/t/${shareSlug}`);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create trip');
+    } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

@@ -110,6 +110,10 @@ export async function releaseClaim(participantId: string): Promise<void> {
   req(await supabase.rpc('release_claim', { p_participant_id: participantId }));
 }
 
+export async function addParticipant(tripId: string, name: string): Promise<string> {
+  return req(await supabase.rpc('add_participant', { p_trip_id: tripId, p_name: name }));
+}
+
 export async function fetchMyTrips(): Promise<{ trip: Trip; data: TripData }[]> {
   const uid = await currentUid();
   if (!uid) return [];
