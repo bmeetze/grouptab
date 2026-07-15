@@ -17,7 +17,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; }
-html, body, #root { height: 100%; }
+html { height: 100%; }
 body {
   font-family: 'Instrument Sans', sans-serif;
   background: var(--bg); color: var(--ink);
@@ -40,7 +40,7 @@ body {
   height: 100dvh;
 }
 
-@media (min-width: 768px) and (min-height: 720px) {
+@media (min-width: 768px) {
   body { align-items: center; background: var(--desk); }
   #root {
     height: min(100vh - 48px, 900px);
@@ -50,6 +50,9 @@ body {
   }
 }
 
+/* Must stay unpositioned (no position/transform/filter/will-change): the
+   absolute overlays inside it (TabBar, FAB, toast) resolve their containing
+   block through it to #root — adding one would clip them to the scroller. */
 .app-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
 
 .screen { padding: 20px 20px calc(84px + env(safe-area-inset-bottom)); min-height: 100%; }
