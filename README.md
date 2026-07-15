@@ -12,7 +12,12 @@ Split group-trip expenses. No accounts, no paywall, no app install — a trip li
 
 ## Stack
 React (Vite, TS) PWA · Supabase (Postgres, Realtime, anonymous auth, RLS) · GitHub Pages.
-Schema + RLS + RPCs: `supabase/schema.sql`. Design spec and handoff live in the owner's workspace.
+Schema + RLS + RPCs: `supabase/schema.sql`.
+
+## Docs
+- [docs/spec.md](docs/spec.md) — product spec (source of truth)
+- [docs/design-handoff.md](docs/design-handoff.md) + [docs/prototype.html](docs/prototype.html) — Trailhead visual system and interactive pixel reference
+- [CLAUDE.md](CLAUDE.md) — working guide for AI agents (and humans): architecture, invariants, conventions, DB-change workflow, gotchas
 
 ## Develop
 ```

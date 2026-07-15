@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#dfe5df}
+a{color:#1f6f54}a:hover{color:#16523e}
+@keyframes gt-toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes gt-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+input{outline:none}
+</style>
+</helmet>
+
+<div data-screen-label="GroupTab app" style="max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:#f4f6f4;font-family:'Instrument Sans',sans-serif;color:#16241d;position:relative;overflow:hidden;box-shadow:0 0 40px rgba(22,36,29,.15)">
+
+  <!-- toast -->
+  <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:#16241d;color:#fff;border-radius:14px;padding:11px 18px;font-size:13.5px;font-weight:600;z-index:50;white-space:nowrap;max-width:88%;overflow:hidden;text-overflow:ellipsis;animation:gt-toast .18s ease-out;box-shadow:0 8px 24px rgba(22,36,29,.3)">{{ toast }}</div>
+  </sc-if>
+
+  <!-- ============ HOME ============ -->
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Home" style="flex:1;display:flex;flex-direction:column;padding:24px 20px;gap:16px;overflow-y:auto">
+      <div style="font-size:20px;font-weight:700;letter-spacing:-.3px">GroupTab</div>
+      <div style="background:#1f6f54;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:10px;color:#fff">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;color:#a8d4c2">HAPPENING NOW</div>
+        <div onClick="{{ goTrip }}" style="font-size:18px;font-weight:700;cursor:pointer">Tahoe 2026 →</div>
+        <div style="font-size:34px;font-weight:700;letter-spacing:-.5px">{{ youBalanceFmt }}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <sc-for list="{{ people }}" as="p" hint-placeholder-count="3">
+            <div style="flex:none;width:26px;height:26px;border-radius:50%;background:{{ p.bg }};color:{{ p.fg }};font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ p.initial }}</div>
+          </sc-for>
+          <span style="font-size:12.5px;color:#a8d4c2;margin-left:4px">{{ totalSpendFmt }} spent</span>
+        </div>
+        <div onClick="{{ goAdd }}" style="background:#fff;color:#1f6f54;border-radius:16px;text-align:center;padding:14px;font-size:15px;font-weight:700;margin-top:6px;cursor:pointer">+ Add expense</div>
+      </div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;color:#8a978e;margin-top:4px">OTHER TRIPS</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div onClick="{{ otherTripTap }}" style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(22,36,29,.05);cursor:pointer">
+          <span style="font-size:14.5px;font-weight:600">Moab in May</span>
+          <span style="font-size:14px;font-weight:700;color:#b4653a">−$31.00</span>
+        </div>
+        <div onClick="{{ otherTripTap }}" style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;opacity:.55;cursor:pointer">
+          <span style="font-size:14.5px;font-weight:600">Portland bachelor 🔒</span>
+          <span style="font-size:12.5px;color:#5c6d64">settled</span>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div onClick="{{ goCreate }}" style="border:1.5px dashed #b9c2bb;color:#5c6d64;border-radius:16px;text-align:center;padding:15px;font-size:14.5px;font-weight:600;cursor:pointer">+ New trip</div>
+      <div onClick="{{ goJoin }}" style="text-align:center;font-size:11.5px;color:#8a978e;cursor:pointer;padding:2px 0">▶ preview the join flow (what a friend sees)</div>
+      <div onClick="{{ resetDemo }}" style="text-align:center;font-size:11.5px;color:#b9c2bb;cursor:pointer;padding:2px 0 6px">reset demo data</div>
+    </div>
+  </sc-if>
+
+  <!-- ============ CREATE ============ -->
+  <sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Create trip" style="flex:1;display:flex;flex-direction:column;padding:24px 20px;gap:14px;animation:gt-in .18s ease-out">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span onClick="{{ goHome }}" style="font-size:17px;color:#5c6d64;cursor:pointer;padding:4px 8px 4px 0">←</span>
+        <span style="font-size:15px;font-weight:600">New trip</span>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">
+        <div style="font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.15">Name the trip.</div>
+        <input value="{{ tripNameDraft }}" onChange="{{ onTripName }}" placeholder="Tahoe 2026" style="background:#fff;border:1.5px solid #1f6f54;border-radius:16px;padding:14px 16px;font-size:16px;font-weight:600;font-family:'Instrument Sans',sans-serif;color:#16241d;width:100%;box-sizing:border-box"></input>
+        <div style="font-size:13px;color:#5c6d64;margin-top:6px">Who's coming? Commas are fine.</div>
+        <input value="{{ namesDraft }}" onChange="{{ onNames }}" placeholder="Brandon, Jake, Maya…" style="background:#fff;border:1px solid #e2e8e3;border-radius:16px;padding:14px 16px;font-size:14px;font-family:'Instrument Sans',sans-serif;color:#16241d;width:100%;box-sizing:border-box"></input>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;min-height:30px">
+          <sc-for list="{{ nameChips }}" as="c" hint-placeholder-count="0">
+            <div style="background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.border }};border-radius:16px;padding:6px 14px;font-size:13px;font-weight:600">{{ c.label }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:12px;color:#8a978e">Names become chips as you type — the first one is you.</div>
+        </sc-if>
+      </div>
+      <div onClick="{{ doCreate }}" style="background:#1f6f54;color:#fff;border-radius:18px;text-align:center;padding:16px;font-size:15px;font-weight:700;cursor:pointer">Create &amp; copy link</div>
+      <div style="font-size:12px;color:#8a978e;text-align:center">No accounts. The link is the invite.</div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TRIP ============ -->
+  <sc-if value="{{ isTrip }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Trip" style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:gt-in .18s ease-out">
+      <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#e3efe9;text-align:center;padding:9px;font-size:12.5px;font-weight:600;color:#1f6f54">🔒 Trip closed · read-only</div>
+      </sc-if>
+      <sc-if value="{{ isOffline }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#16241d;color:#fff;text-align:center;padding:9px;font-size:12px;font-weight:600">⚠ You're offline — showing last synced data</div>
+      </sc-if>
+      <div style="padding:22px 20px 14px;display:flex;flex-direction:column;gap:2px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span onClick="{{ goHome }}" style="font-size:16px;color:#5c6d64;cursor:pointer">←</span>
+            <span style="font-size:15px;font-weight:600;letter-spacing:.2px">Tahoe 2026</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span onClick="{{ goPeople }}" style="font-size:12.5px;color:#5c6d64;border:1px solid #d3dcd6;border-radius:16px;padding:5px 11px;background:#fff;cursor:pointer">👥</span>
+            <span onClick="{{ shareTap }}" style="font-size:12.5px;color:#5c6d64;border:1px solid #d3dcd6;border-radius:16px;padding:5px 13px;background:#fff;cursor:pointer">share ↗</span>
+          </div>
+        </div>
+        <div style="font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:8px;color:{{ youBalanceColor }}">{{ youBalanceFmt }}</div>
+        <div style="font-size:13px;color:#5c6d64">{{ owedLabel }} · {{ totalSpendFmt }} trip total</div>
+      </div>
+      <div style="flex:1;padding:4px 16px 16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto">
+        <sc-for list="{{ feedItems }}" as="x" hint-placeholder-count="4">
+          <div onClick="{{ x.onOpen }}" style="display:flex;gap:12px;align-items:center;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 1px 2px rgba(22,36,29,.05);cursor:pointer;flex:none">
+            <div style="flex:none;width:36px;height:36px;border-radius:50%;background:{{ x.bg }};color:{{ x.fg }};font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ x.initial }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.title }}<sc-if value="{{ x.flagged }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;font-weight:700;color:#a06b1f;background:#f4e8d0;border-radius:9px;padding:2px 7px;margin-left:7px;vertical-align:1px">⚑</span></sc-if></div>
+              <div style="font-size:12px;color:#5c6d64;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.meta }}</div>
+            </div>
+            <div style="flex:none;font-size:15px;font-weight:700">{{ x.amountFmt }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:relative">
+        <sc-if value="{{ notClosed }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ goAdd }}" style="position:absolute;right:18px;top:-66px;width:56px;height:56px;border-radius:50%;background:#1f6f54;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 6px 16px rgba(31,111,84,.4);cursor:pointer">+</div>
+        </sc-if>
+        <div style="display:flex;background:#fff;border-top:1px solid #e2e8e3;padding:8px 0 18px">
+          <div onClick="{{ goHome }}" style="flex:1;text-align:center;font-size:13px;color:#8a978e;padding-top:8px;cursor:pointer">⌂ Home</div>
+          <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:#1f6f54;padding-top:8px;cursor:pointer">Expenses</div>
+          <div onClick="{{ goSettle }}" style="flex:1;text-align:center;font-size:13px;color:#8a978e;padding-top:8px;cursor:pointer">Settle up</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ ADD ============ -->
+  <sc-if value="{{ isAdd }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Add expense" style="flex:1;display:flex;flex-direction:column;padding:20px;gap:14px;box-sizing:border-box;animation:gt-in .18s ease-out">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span onClick="{{ goTrip }}" style="font-size:19px;color:#5c6d64;cursor:pointer;padding:2px 8px 2px 0">✕</span>
+        <span style="font-size:15px;font-weight:600">New expense</span>
+        <span style="width:20px"></span>
+      </div>
+      <div style="text-align:center;padding:2px 0 0">
+        <div style="font-size:40px;font-weight:700;letter-spacing:-1px">{{ amountDisplay }}</div>
+        <input value="{{ descDraft }}" onChange="{{ onDesc }}" placeholder="What for? (required)" style="font-size:15px;font-weight:600;color:#16241d;background:#fff;border:1.5px solid {{ descBorder }};border-radius:14px;padding:11px 18px;margin-top:10px;text-align:center;font-family:'Instrument Sans',sans-serif;width:80%;box-sizing:border-box"></input>
+      </div>
+      <div style="background:#fff;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#5c6d64">
+          <span>Paid by <b style="color:#16241d">You</b></span>
+          <span onClick="{{ toggleSplitMode }}" style="cursor:pointer;background:#eef4f0;border-radius:12px;padding:6px 13px;font-weight:700;color:#1f6f54">Split {{ splitModeLabel }} ⇄</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <sc-for list="{{ splitAvatars }}" as="p" hint-placeholder-count="3">
+            <div onClick="{{ p.onToggle }}" style="flex:none;width:44px;height:44px;border-radius:50%;background:{{ p.bg }};color:{{ p.fg }};font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2.5px solid {{ p.ring }};opacity:{{ p.opacity }};cursor:pointer">{{ p.initial }}</div>
+          </sc-for>
+          <span style="font-size:12.5px;color:#5c6d64;margin-left:auto">{{ perHeadLabel }}</span>
+        </div>
+        <sc-if value="{{ isCustomMode }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #e2e8e3;padding-top:10px">
+            <sc-for list="{{ customRows }}" as="c" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="flex:none;width:28px;height:28px;border-radius:50%;background:{{ c.bg }};color:{{ c.fg }};font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ c.initial }}</div>
+                <span style="font-size:13px;flex:1">{{ c.name }}</span>
+                <span style="font-size:13px;color:#8a978e">$</span>
+                <input value="{{ c.val }}" onChange="{{ c.onChange }}" placeholder="0.00" inputMode="decimal" style="width:84px;text-align:right;background:#f4f6f4;border:1px solid #e2e8e3;border-radius:10px;padding:9px 10px;font-size:13.5px;font-weight:600;font-family:'Instrument Sans',sans-serif;color:#16241d"></input>
+              </div>
+            </sc-for>
+            <div style="font-size:11.5px;font-weight:700;text-align:right;color:{{ customStatusColor }}">{{ customStatusLabel }}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:11.5px;color:#8a978e">{{ splitHint }}</div>
+        </sc-if>
+      </div>
+      <div style="margin-top:auto;display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:52px;gap:9px">
+        <sc-for list="{{ keypadKeys }}" as="k" hint-placeholder-count="12">
+          <div onClick="{{ k.onTap }}" style="background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:500;cursor:pointer;user-select:none;box-shadow:0 1px 2px rgba(22,36,29,.04)">{{ k.label }}</div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+        <div style="text-align:center;font-size:11px;color:#b9c2bb">your keyboard works here too</div>
+      </sc-if>
+      <div onClick="{{ onSave }}" style="background:{{ saveBg }};color:#fff;border-radius:18px;text-align:center;padding:16px;font-size:15px;font-weight:700;cursor:pointer">Save expense</div>
+    </div>
+  </sc-if>
+
+  <!-- ============ DETAIL ============ -->
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Expense detail" style="flex:1;display:flex;flex-direction:column;overflow-y:auto;animation:gt-in .18s ease-out">
+      <div style="padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center">
+        <span onClick="{{ goTrip }}" style="font-size:17px;color:#5c6d64;cursor:pointer;padding:2px 8px 2px 0">←</span>
+        <span style="font-size:14px;font-weight:600">Expense</span>
+        <span onClick="{{ editTap }}" style="font-size:13px;color:#5c6d64;cursor:pointer">✎ edit</span>
+      </div>
+      <div style="padding:14px 20px 0;text-align:center">
+        <div style="font-size:32px;font-weight:700;letter-spacing:-.5px">{{ detail.amountFmt }}</div>
+        <div style="font-size:15px;font-weight:600;margin-top:3px">{{ detail.title }}</div>
+        <div style="font-size:12.5px;color:#5c6d64;margin-top:2px">paid by {{ detail.payerName }} · {{ detail.when }}</div>
+      </div>
+      <sc-if value="{{ detail.flagged }}" hint-placeholder-val="{{ false }}">
+        <div style="margin:12px 16px 0;background:#f4e8d0;border-radius:16px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12.5px;color:#a06b1f;font-weight:600">⚑ Flagged by {{ detail.flaggedBy }}</span>
+          <span onClick="{{ flagTap }}" style="flex:none;background:#fff;border-radius:12px;padding:6px 13px;font-size:12px;font-weight:700;color:#a06b1f;cursor:pointer">Resolve</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ detail.notFlagged }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ flagTap }}" style="margin:12px 16px 0;border:1px solid #e2e8e3;background:#fff;border-radius:16px;padding:11px 14px;text-align:center;font-size:12.5px;color:#5c6d64;font-weight:600;cursor:pointer">⚑ Flag for review</div>
+      </sc-if>
+      <div style="margin:12px 16px 0;background:#fff;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:#8a978e">{{ detail.splitLabel }}</div>
+        <sc-for list="{{ detail.splitRows }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:none;width:26px;height:26px;border-radius:50%;background:{{ s.bg }};color:{{ s.fg }};font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ s.initial }}</div>
+            <span style="font-size:13.5px;flex:1">{{ s.name }}</span>
+            <span style="font-size:13.5px;font-weight:700">{{ s.amtFmt }}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:11px;color:#8a978e">leftover cents go to the payer</div>
+        </sc-if>
+      </div>
+      <div style="margin:12px 16px;display:flex;flex-direction:column;gap:8px;flex:1">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:#8a978e">COMMENTS</div>
+        <sc-for list="{{ detail.comments }}" as="c" hint-placeholder-count="0">
+          <div style="background:#fff;border-radius:16px;padding:10px 14px;font-size:13px"><b style="font-size:12px;color:{{ c.color }}">{{ c.by }}</b> — {{ c.body }}</div>
+        </sc-for>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input value="{{ commentDraft }}" onChange="{{ onComment }}" placeholder="Add a comment…" style="flex:1;background:#fff;border:1px solid #e2e8e3;border-radius:16px;padding:11px 14px;font-size:13px;font-family:'Instrument Sans',sans-serif;min-width:0"></input>
+          <div onClick="{{ sendComment }}" style="flex:none;width:40px;height:40px;border-radius:50%;background:#1f6f54;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer">↑</div>
+        </div>
+      </div>
+      <sc-if value="{{ confirmDelete }}" hint-placeholder-val="{{ false }}">
+        <div style="margin:0 16px 20px;background:#fff;border:1.5px solid #b4653a;border-radius:16px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span style="font-size:13px;font-weight:600;color:#b4653a">Delete this expense?</span>
+          <div style="display:flex;gap:8px">
+            <span onClick="{{ cancelDelete }}" style="font-size:12.5px;font-weight:700;color:#5c6d64;padding:7px 12px;cursor:pointer">Cancel</span>
+            <span onClick="{{ doDelete }}" style="font-size:12.5px;font-weight:700;color:#fff;background:#b4653a;border-radius:11px;padding:7px 12px;cursor:pointer">Delete</span>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notConfirmDelete }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ askDelete }}" style="margin:0 16px 20px;text-align:center;font-size:13px;color:#b4653a;font-weight:600;cursor:pointer;padding:6px">Delete expense…</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ JOIN ============ -->
+  <sc-if value="{{ isJoin }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Join trip" style="flex:1;display:flex;flex-direction:column;padding:24px 20px;gap:12px;animation:gt-in .18s ease-out">
+      <div style="font-size:11.5px;color:#8a978e;font-family:ui-monospace,monospace;text-align:center">this is what a friend sees when they tap the link</div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px">
+        <div style="font-size:13px;color:#5c6d64;text-align:center">You've been invited to</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-.5px;text-align:center">Tahoe 2026</div>
+        <div style="font-size:13px;color:#5c6d64;text-align:center;margin-bottom:8px">Which one are you?</div>
+        <sc-for list="{{ joinRows }}" as="r" hint-placeholder-count="3">
+          <div onClick="{{ r.onTap }}" style="background:#fff;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:12px;border:{{ r.border }};opacity:{{ r.opacity }};cursor:pointer">
+            <div style="flex:none;width:38px;height:38px;border-radius:50%;background:{{ r.bg }};color:{{ r.fg }};font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ r.initial }}</div>
+            <span style="font-size:15px;font-weight:600;flex:1">{{ r.name }}</span>
+            <span style="font-size:12.5px;font-weight:700;color:{{ r.statusColor }}">{{ r.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;color:#8a978e;text-align:center">No signup. This device remembers you from now on.</div>
+      <div onClick="{{ goHome }}" style="text-align:center;font-size:11.5px;color:#b9c2bb;cursor:pointer;padding:2px 0 6px">← back to home</div>
+    </div>
+  </sc-if>
+
+  <!-- ============ PEOPLE ============ -->
+  <sc-if value="{{ isPeople }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="People" style="flex:1;display:flex;flex-direction:column;padding:24px 20px;gap:12px;animation:gt-in .18s ease-out">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span onClick="{{ goTrip }}" style="font-size:17px;color:#5c6d64;cursor:pointer;padding:4px 8px 4px 0">←</span>
+        <span style="font-size:15px;font-weight:600">People</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+        <sc-for list="{{ peopleRows }}" as="r" hint-placeholder-count="3">
+          <div style="background:#fff;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(22,36,29,.05)">
+            <div style="flex:none;width:36px;height:36px;border-radius:50%;background:{{ r.bg }};color:{{ r.fg }};font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ r.initial }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14.5px;font-weight:600">{{ r.name }}</div>
+              <div style="font-size:11.5px;color:{{ r.statusColor }};font-weight:600">{{ r.status }}</div>
+            </div>
+            <sc-if value="{{ r.showAction }}" hint-placeholder-val="{{ false }}">
+              <span onClick="{{ r.onAction }}" style="flex:none;font-size:12px;font-weight:700;color:#b4653a;border:1.5px solid #e8d5c8;border-radius:12px;padding:7px 12px;cursor:pointer">{{ r.actionLabel }}</span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:11.5px;color:#8a978e;text-align:center;margin-top:4px">Anyone can release their own name; the trip creator can release anyone's — for lost phones and wrong picks.</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ============ SETTLE ============ -->
+  <sc-if value="{{ isSettle }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Settle up" style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:gt-in .18s ease-out">
+      <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#e3efe9;text-align:center;padding:9px;font-size:12.5px;font-weight:600;color:#1f6f54">🔒 Trip closed · read-only</div>
+      </sc-if>
+      <sc-if value="{{ isOffline }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#16241d;color:#fff;text-align:center;padding:9px;font-size:12px;font-weight:600">⚠ You're offline — showing last synced data</div>
+      </sc-if>
+      <div style="padding:22px 20px 10px;font-size:17px;font-weight:700">Settle up</div>
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:12px">
+
+        <sc-if value="{{ showAllInCard }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:0 16px;background:#fff;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:11px;border:1.5px solid #1f6f54">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div><div style="font-size:14px;font-weight:700">All my expenses are in</div><div style="font-size:11.5px;color:#5c6d64">flip this when you've logged everything</div></div>
+              <div onClick="{{ toggleYouIn }}" style="flex:none;width:48px;height:28px;border-radius:14px;background:{{ youInBg }};position:relative;cursor:pointer;transition:background .15s">
+                <div style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s;left:{{ youInKnob }}"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:9px;align-items:center;border-top:1px solid #e2e8e3;padding-top:11px">
+              <sc-for list="{{ allInAvatars }}" as="p" hint-placeholder-count="3">
+                <div onClick="{{ p.onToggle }}" style="flex:none;width:32px;height:32px;border-radius:50%;background:{{ p.bg }};color:{{ p.fg }};font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2px solid {{ p.ring }};opacity:{{ p.opacity }};cursor:pointer">{{ p.label }}</div>
+              </sc-for>
+              <span style="font-size:12px;color:#5c6d64">{{ allInStatus }}</span>
+            </div>
+            <sc-if value="{{ showHints }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:11px;color:#8a978e">prototype: tap Jake or Maya to simulate them flipping theirs</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showFinalRibbon }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:0 16px;background:#e3efe9;border-radius:16px;padding:11px 14px;display:flex;gap:9px;align-items:center">
+            <span style="font-size:12.5px;color:#1f6f54;font-weight:700">Everyone's in ✓ — these numbers are final</span>
+            <span onClick="{{ toggleYouIn }}" style="margin-left:auto;font-size:11px;color:#5c6d64;cursor:pointer;text-decoration:underline">undo</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ notAllZero }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:12px 16px 0;background:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px">
+            <sc-for list="{{ balanceRows }}" as="p" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="flex:none;font-size:12.5px;width:60px;font-weight:600">{{ p.name }}</span>
+                <div style="flex:1;display:flex;height:14px;align-items:stretch">
+                  <div style="width:50%;display:flex;justify-content:flex-end;border-right:1px solid #e2e8e3"><div style="width:{{ p.negW }};background:#c98a4b;border-radius:7px 0 0 7px"></div></div>
+                  <div style="width:50%"><div style="width:{{ p.posW }};background:#1f6f54;border-radius:0 7px 7px 0;height:100%"></div></div>
+                </div>
+                <span style="flex:none;font-size:12.5px;font-weight:700;width:64px;text-align:right;color:{{ p.color }}">{{ p.amtFmt }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:16px 18px 0;font-size:12.5px;color:#5c6d64;font-weight:600">Transfers
+            <sc-if value="{{ allFinal }}" hint-placeholder-val="{{ false }}"><span style="font-weight:700;color:#1f6f54;background:#e3efe9;border-radius:9px;padding:2px 8px;font-size:11px;margin-left:6px">FINAL</span></sc-if>
+            <sc-if value="{{ notAllFinal }}" hint-placeholder-val="{{ true }}"><span style="font-weight:700;color:#a06b1f;background:#f4e8d0;border-radius:9px;padding:2px 8px;font-size:11px;margin-left:6px">DRAFT — may change</span></sc-if>
+          </div>
+          <div style="padding:9px 16px 0;display:flex;flex-direction:column;gap:9px;opacity:{{ transfersOpacity }}">
+            <sc-for list="{{ transfers }}" as="t" hint-placeholder-count="2">
+              <div style="background:#fff;border-radius:18px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(22,36,29,.05)">
+                <div><div style="font-size:13px;color:#5c6d64">{{ t.fromName }} pays <b style="color:#16241d">{{ t.toName }}</b></div><div style="font-size:19px;font-weight:700;margin-top:2px">{{ t.amtFmt }}</div></div>
+                <div onClick="{{ t.onPaid }}" style="flex:none;background:{{ payBtnBg }};color:{{ payBtnColor }};border:1.5px solid #1f6f54;border-radius:14px;padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer">Mark paid</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ allZero }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:12px 16px 0;background:#fff;border-radius:18px;padding:22px 16px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center">
+            <div style="width:60px;height:60px;border-radius:50%;background:#e3efe9;color:#1f6f54;font-size:28px;display:flex;align-items:center;justify-content:center">✓</div>
+            <div style="font-size:18px;font-weight:700">All squared up</div>
+            <div style="font-size:13px;color:#5c6d64;line-height:1.5">Every balance is at $0.00.<br>{{ settledSummary }}</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px 18px 0;font-size:12.5px;color:#5c6d64;font-weight:600">Payment history</div>
+          <div style="padding:9px 16px 0;display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="1">
+              <div style="background:#fff;border-radius:16px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;opacity:.65">
+                <span style="font-size:13px;color:#5c6d64">{{ h.label }} · <b style="color:#16241d">{{ h.amtFmt }}</b></span>
+                <span style="font-size:11.5px;color:#1f6f54;font-weight:700">paid ✓</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ canClose }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeTrip }}" style="margin:16px 16px 0;background:#1f6f54;color:#fff;border-radius:18px;text-align:center;padding:15px;font-size:14.5px;font-weight:700;cursor:pointer">Close trip 🔒</div>
+          <div style="margin:8px 16px 0;font-size:11.5px;color:#8a978e;text-align:center">closed trips are read-only · export CSV anytime</div>
+        </sc-if>
+        <sc-if value="{{ showCloseHint }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:16px 16px 0;border:1.5px dashed #b9c2bb;color:#8a978e;border-radius:16px;text-align:center;padding:12px;font-size:12.5px;font-weight:600">Close trip — available when everyone's at $0</div>
+        </sc-if>
+      </div>
+      <div style="display:flex;background:#fff;border-top:1px solid #e2e8e3;padding:8px 0 18px">
+        <div onClick="{{ goHome }}" style="flex:1;text-align:center;font-size:13px;color:#8a978e;padding-top:8px;cursor:pointer">⌂ Home</div>
+        <div onClick="{{ goTrip }}" style="flex:1;text-align:center;font-size:13px;color:#8a978e;padding-top:8px;cursor:pointer">Expenses</div>
+        <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:#1f6f54;padding-top:8px;cursor:pointer">Settle up</div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:430,&quot;height&quot;:900},&quot;showHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;liveDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;simulateOffline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.PEOPLE = [
+      { id: 'b', name: 'Brandon', initial: 'B', bg: '#c7ddd2', fg: '#1f6f54', you: true },
+      { id: 'j', name: 'Jake', initial: 'J', bg: '#e6d9c5', fg: '#8a6a3b' },
+      { id: 'm', name: 'Maya', initial: 'M', bg: '#d9cfe8', fg: '#5b4a78' }
+    ];
+    this.KEY = 'grouptab-proto-v2';
+    const seeds = this.seeds();
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) {}
+    this.state = Object.assign({
+      screen: 'home', detailId: null, confirmDelete: false,
+      amountStr: '', descDraft: '', splitIds: ['b', 'j', 'm'], splitMode: 'equal', custom: {},
+      commentDraft: '', tripNameDraft: '', namesDraft: '',
+      toast: null, online: true
+    }, seeds, (saved && saved.expenses) ? saved : {});
+    this._liveDone = false;
+  }
+
+  seeds() {
+    return {
+      expenses: [
+        { id: 'e1', title: 'Groceries', payer: 'j', cents: 9600, split: { b: 3200, j: 3200, m: 3200 }, flagged: false, flaggedBy: '', comments: [], when: 'yesterday' },
+        { id: 'e2', title: 'Boat deposit', payer: 'b', cents: 40000, split: { b: 13334, j: 13333, m: 13333 }, flagged: true, flaggedBy: 'Maya', comments: [
+          { by: 'Maya', body: 'is this refundable if the weather turns?' },
+          { by: 'You', body: 'yes, up to 48h before' }
+        ], when: 'yesterday' },
+        { id: 'e3', title: 'Gas', payer: 'm', cents: 5200, split: { m: 2600, j: 2600 }, flagged: false, flaggedBy: '', comments: [], when: 'today' },
+        { id: 'e4', title: 'Lift tickets', payer: 'b', cents: 54000, split: { b: 18000, j: 18000, m: 18000 }, flagged: false, flaggedBy: '', comments: [], when: 'today' }
+      ],
+      settlements: [],
+      allIn: { b: false, j: false, m: false },
+      closed: false,
+      nextId: 5,
+      youId: 'b',
+      claimed: { b: true, j: false, m: false },
+      conflictShown: false
+    };
+  }
+
+  componentDidUpdate() {
+    const { expenses, settlements, allIn, closed, nextId, youId, claimed, conflictShown } = this.state;
+    try { localStorage.setItem(this.KEY, JSON.stringify({ expenses, settlements, allIn, closed, nextId, youId, claimed, conflictShown })); } catch (e) {}
+  }
+
+  componentDidMount() {
+    this._onKey = (ev) => {
+      if (this.state.screen !== 'add') return;
+      const tag = (ev.target && ev.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (/^[0-9]$/.test(ev.key) || ev.key === '.') { this.tapKey(ev.key); ev.preventDefault(); }
+      else if (ev.key === 'Backspace') { this.tapKey('⌫'); ev.preventDefault(); }
+      else if (ev.key === 'Enter') { this.saveExpense(); }
+    };
+    window.addEventListener('keydown', this._onKey);
+    this._onOnline = () => this.setState({ online: true });
+    this._onOffline = () => this.setState({ online: false });
+    window.addEventListener('online', this._onOnline);
+    window.addEventListener('offline', this._onOffline);
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) this.setState({ online: false });
+    if (this.props.liveDemo && !this._liveDone) {
+      this._liveTimer = setTimeout(() => {
+        this._liveDone = true;
+        if (this.state.closed) return;
+        const cents = 3600, ids = ['b', 'j', 'm'];
+        const split = this.computeSplit(cents, ids, 'j');
+        this.setState(s => ({
+          expenses: [{ id: 'e' + s.nextId, title: 'Tacos', payer: 'j', cents, split, flagged: false, flaggedBy: '', comments: [], when: 'just now' }].concat(s.expenses),
+          nextId: s.nextId + 1,
+          allIn: Object.assign({}, s.allIn, { j: false })
+        }));
+        this.showToast('⚡ Jake just added Tacos — $36.00');
+      }, 4000);
+    }
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._liveTimer); clearTimeout(this._toastTimer);
+    window.removeEventListener('keydown', this._onKey);
+    window.removeEventListener('online', this._onOnline);
+    window.removeEventListener('offline', this._onOffline);
+  }
+
+  dn(id, cap) { return id === this.state.youId ? (cap ? 'You' : 'you') : this.person(id).name; }
+  isOffline() { return (this.props.simulateOffline ?? false) || !this.state.online; }
+
+  fmt(cents) {
+    const neg = cents < 0, a = Math.abs(cents);
+    const s = (a / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (neg ? '−$' : '$') + s;
+  }
+  fmtSigned(cents) {
+    if (cents === 0) return '$0.00';
+    return (cents > 0 ? '+' : '−') + this.fmt(Math.abs(cents)).replace('−', '');
+  }
+
+  computeSplit(total, ids, payer) {
+    const n = ids.length, base = Math.floor(total / n), leftover = total - base * n;
+    const split = {};
+    ids.forEach(id => { split[id] = base; });
+    const luckyId = ids.includes(payer) ? payer : ids[0];
+    split[luckyId] += leftover;
+    return split;
+  }
+
+  balances() {
+    const bal = { b: 0, j: 0, m: 0 };
+    this.state.expenses.forEach(e => {
+      bal[e.payer] += e.cents;
+      Object.keys(e.split).forEach(id => { bal[id] -= e.split[id]; });
+    });
+    this.state.settlements.forEach(st => { bal[st.from] += st.cents; bal[st.to] -= st.cents; });
+    return bal;
+  }
+
+  transfersFrom(bal) {
+    const cred = [], debt = [];
+    Object.keys(bal).forEach(id => {
+      if (bal[id] > 0) cred.push({ id, amt: bal[id] });
+      else if (bal[id] < 0) debt.push({ id, amt: -bal[id] });
+    });
+    cred.sort((a, b) => b.amt - a.amt); debt.sort((a, b) => b.amt - a.amt);
+    const out = [];
+    let ci = 0, di = 0;
+    while (ci < cred.length && di < debt.length) {
+      const t = Math.min(cred[ci].amt, debt[di].amt);
+      out.push({ from: debt[di].id, to: cred[ci].id, cents: t });
+      cred[ci].amt -= t; debt[di].amt -= t;
+      if (cred[ci].amt === 0) ci++;
+      if (debt[di].amt === 0) di++;
+    }
+    return out;
+  }
+
+  showToast(msg) {
+    clearTimeout(this._toastTimer);
+    this.setState({ toast: msg });
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 2400);
+  }
+
+  person(id) { return this.PEOPLE.find(p => p.id === id); }
+
+  go(screen, extra) { this.setState(Object.assign({ screen }, extra || {})); }
+
+  tapKey(k) {
+    this.setState(s => {
+      let a = s.amountStr;
+      if (k === '⌫') a = a.slice(0, -1);
+      else if (k === '.') { if (!a.includes('.')) a = (a || '0') + '.'; }
+      else {
+        const dec = a.split('.')[1];
+        if (dec !== undefined && dec.length >= 2) return null;
+        if (a.replace('.', '').length >= 7) return null;
+        a = (a === '0' ? k : a + k);
+      }
+      return { amountStr: a };
+    });
+  }
+
+  saveExpense() {
+    const st = this.state;
+    if (this.isOffline()) { this.showToast('You\u2019re offline \u2014 writes are disabled'); return; }
+    const cents = Math.round(parseFloat(st.amountStr || '0') * 100);
+    if (!(cents > 0)) { this.showToast('Enter an amount first'); return; }
+    if (!st.descDraft.trim()) { this.showToast('Add a description — the group needs to know what this was'); return; }
+    const ids = this.PEOPLE.map(p => p.id).filter(id => st.splitIds.includes(id));
+    let split;
+    if (st.splitMode === 'custom') {
+      split = {}; let sum = 0;
+      ids.forEach(id => {
+        const c = Math.round(parseFloat(st.custom[id] || '0') * 100) || 0;
+        if (c > 0) split[id] = c;
+        sum += c;
+      });
+      if (sum !== cents) { this.showToast('Custom amounts must add up to ' + this.fmt(cents)); return; }
+      if (Object.keys(split).length === 0) { this.showToast('At least one person has to be in'); return; }
+    } else {
+      split = this.computeSplit(cents, ids, st.youId);
+    }
+    this.setState(s => ({
+      expenses: [{ id: 'e' + s.nextId, title: s.descDraft.trim(), payer: s.youId, cents, split, flagged: false, flaggedBy: '', comments: [], when: 'just now' }].concat(s.expenses),
+      nextId: s.nextId + 1,
+      allIn: Object.assign({}, s.allIn, { [s.youId]: false }),
+      amountStr: '', descDraft: '', splitIds: ['b', 'j', 'm'], splitMode: 'equal', custom: {},
+      screen: 'trip'
+    }));
+    this.showToast('Added ' + this.fmt(cents));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const bal = this.balances();
+    const you = s.youId ? bal[s.youId] : 0;
+    const totalSpend = s.expenses.reduce((a, e) => a + e.cents, 0);
+    const transfers = this.transfersFrom(bal);
+    const allFinal = this.PEOPLE.every(p => s.allIn[p.id]);
+    const allZero = this.PEOPLE.every(p => bal[p.id] === 0) && s.expenses.length > 0;
+    const maxAbs = Math.max(1, ...this.PEOPLE.map(p => Math.abs(bal[p.id])));
+    const detail = s.expenses.find(e => e.id === s.detailId);
+    const waiting = this.PEOPLE.filter(p => !s.allIn[p.id]).map(p => this.dn(p.id));
+    const inCount = this.PEOPLE.filter(p => s.allIn[p.id]).length;
+    const cents = Math.round(parseFloat(s.amountStr || '0') * 100);
+    const perHead = s.splitIds.length ? Math.floor(cents / s.splitIds.length) : 0;
+    const sumCustom = this.PEOPLE.filter(p => s.splitIds.includes(p.id)).reduce((a, p) => a + (Math.round(parseFloat(s.custom[p.id] || '0') * 100) || 0), 0);
+    const readyToSave = cents > 0 && !!s.descDraft.trim() && (s.splitMode === 'equal' || sumCustom === cents) && !this.isOffline();
+
+    return {
+      // nav flags
+      isHome: s.screen === 'home', isCreate: s.screen === 'create', isTrip: s.screen === 'trip',
+      isAdd: s.screen === 'add', isDetail: s.screen === 'detail' && !!detail, isSettle: s.screen === 'settle',
+      closed: s.closed, notClosed: !s.closed,
+      showHints: this.props.showHints ?? true,
+
+      // toast
+      toast: s.toast || '', toastVisible: !!s.toast,
+
+      // shared
+      people: this.PEOPLE,
+      youBalanceFmt: this.fmtSigned(you),
+      youBalanceColor: you > 0 ? '#1f6f54' : (you < 0 ? '#b4653a' : '#8a978e'),
+      owedLabel: you > 0 ? "you're owed" : (you < 0 ? 'you owe' : "you're even"),
+      totalSpendFmt: this.fmt(totalSpend),
+
+      // nav handlers
+      goHome: () => this.go('home'),
+      goTrip: () => this.go('trip'),
+      goSettle: () => this.go('settle'),
+      goCreate: () => this.go('create'),
+      goAdd: () => {
+        if (this.state.closed) { this.showToast('Trip is closed — read-only'); return; }
+        if (this.isOffline()) { this.showToast('You\u2019re offline \u2014 writes are disabled'); return; }
+        this.go('add');
+      },
+      goJoin: () => this.go('join'),
+      goPeople: () => this.go('people'),
+      isJoin: s.screen === 'join',
+      isPeople: s.screen === 'people',
+      isOffline: this.isOffline(),
+      joinRows: this.PEOPLE.map(p => {
+        const isYou = p.id === s.youId;
+        const claimed = s.claimed[p.id];
+        return {
+          name: p.name, initial: p.initial, bg: p.bg, fg: p.fg,
+          status: isYou ? 'you ✓' : (claimed ? 'claimed ✓' : 'that\u2019s me →'),
+          statusColor: (claimed || isYou) ? '#8a978e' : '#1f6f54',
+          border: (claimed || isYou) ? '1px solid #e2e8e3' : '2px solid #1f6f54',
+          opacity: (claimed && !isYou) ? '.55' : '1',
+          onTap: () => {
+            const st = this.state;
+            if (st.claimed[p.id]) { this.showToast(p.id === st.youId ? 'That\u2019s already you' : p.name + ' is already claimed'); return; }
+            if (p.id === 'm' && !st.conflictShown) {
+              this.setState(x => ({ claimed: Object.assign({}, x.claimed, { m: true }), conflictShown: true }));
+              this.showToast('\u201cMaya\u201d was just claimed on another device \u2014 pick again');
+              return;
+            }
+            this.setState(x => ({ claimed: Object.assign({}, x.claimed, { [p.id]: true }), youId: p.id, screen: 'trip' }));
+            this.showToast('You\u2019re in as ' + p.name + ' \u2014 this device remembers you');
+          }
+        };
+      }),
+      peopleRows: this.PEOPLE.map(p => {
+        const isYou = p.id === s.youId;
+        const claimed = s.claimed[p.id];
+        const canRelease = claimed && (isYou || s.youId === 'b');
+        return {
+          name: p.name + (isYou ? ' (you)' : ''), initial: p.initial, bg: p.bg, fg: p.fg,
+          status: claimed ? 'claimed ✓' : 'unclaimed',
+          statusColor: claimed ? '#1f6f54' : '#8a978e',
+          showAction: canRelease,
+          actionLabel: isYou ? 'Release my claim' : 'Release',
+          onAction: () => {
+            if (isYou) {
+              this.setState(x => ({ claimed: Object.assign({}, x.claimed, { [p.id]: false }), youId: null, screen: 'join' }));
+              this.showToast('Claim released \u2014 pick your name to rejoin');
+            } else {
+              this.setState(x => ({ claimed: Object.assign({}, x.claimed, { [p.id]: false }) }));
+              this.showToast(p.name + '\u2019s name is free to re-claim on a new device');
+            }
+          }
+        };
+      }),
+      shareTap: () => this.showToast('Link copied — grouptab.app/t/x7k2m'),
+      otherTripTap: () => this.showToast('Only Tahoe 2026 is wired in this prototype'),
+      resetDemo: () => {
+        this.setState(Object.assign({}, this.seeds(), { screen: 'home' }));
+        this.showToast('Demo data reset');
+      },
+
+      // create
+      tripNameDraft: s.tripNameDraft, namesDraft: s.namesDraft,
+      onTripName: (e) => this.setState({ tripNameDraft: e.target.value }),
+      onNames: (e) => this.setState({ namesDraft: e.target.value }),
+      nameChips: s.namesDraft.split(',').map(x => x.trim()).filter(Boolean).map((n, i) => ({
+        label: i === 0 ? n + ' · you ✓' : n,
+        bg: i === 0 ? '#1f6f54' : '#fff', fg: i === 0 ? '#fff' : '#5c6d64', border: i === 0 ? '#1f6f54' : '#d3dcd6'
+      })),
+      doCreate: () => {
+        this.showToast('Link copied! (prototype keeps the demo trip)');
+        this.go('trip');
+      },
+
+      // trip feed
+      feedItems: s.expenses.map(e => {
+        const p = this.person(e.payer);
+        const names = Object.keys(e.split).length === 3 ? 'everyone' : Object.keys(e.split).map(id => this.dn(id)).join(', ');
+        return {
+          title: e.title, meta: this.dn(e.payer, true) + ' · ' + names + ' · ' + e.when,
+          amountFmt: this.fmt(e.cents), bg: p.bg, fg: p.fg, initial: p.initial, flagged: e.flagged,
+          onOpen: () => this.go('detail', { detailId: e.id, confirmDelete: false, commentDraft: '' })
+        };
+      }),
+
+      // add
+      amountDisplay: '$' + (s.amountStr || '0'),
+      descDraft: s.descDraft,
+      onDesc: (e) => this.setState({ descDraft: e.target.value }),
+      splitAvatars: this.PEOPLE.map(p => {
+        const inSplit = s.splitIds.includes(p.id);
+        return {
+          initial: p.initial, bg: inSplit ? p.bg : '#eef1ee', fg: inSplit ? p.fg : '#b9c2bb',
+          ring: inSplit ? '#1f6f54' : 'transparent', opacity: inSplit ? '1' : '.6',
+          onToggle: () => this.setState(st => {
+            const has = st.splitIds.includes(p.id);
+            if (has && st.splitIds.length <= 1) { this.showToast('At least one person has to be in'); return null; }
+            return { splitIds: has ? st.splitIds.filter(x => x !== p.id) : this.PEOPLE.map(q => q.id).filter(id => st.splitIds.includes(id) || id === p.id) };
+          })
+        };
+      }),
+      perHeadLabel: s.splitMode === 'custom' ? (s.splitIds.length + ' people') : (cents > 0 ? this.fmt(perHead) + ' each' : s.splitIds.length + ' people'),
+      keypadKeys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map(k => ({ label: k, onTap: () => this.tapKey(k) })),
+      saveBg: readyToSave ? '#1f6f54' : '#b9c2bb',
+      descBorder: s.descDraft.trim() ? '#1f6f54' : '#d3dcd6',
+      splitModeLabel: s.splitMode === 'equal' ? 'equally' : 'custom',
+      isCustomMode: s.splitMode === 'custom',
+      toggleSplitMode: () => this.setState(st => ({ splitMode: st.splitMode === 'equal' ? 'custom' : 'equal' })),
+      customRows: this.PEOPLE.filter(p => s.splitIds.includes(p.id)).map(p => ({
+        name: this.dn(p.id, true), initial: p.initial, bg: p.bg, fg: p.fg,
+        val: s.custom[p.id] || '',
+        onChange: (e) => {
+          const v = e.target.value.replace(/[^0-9.]/g, '');
+          this.setState(st => ({ custom: Object.assign({}, st.custom, { [p.id]: v }) }));
+        }
+      })),
+      customStatusLabel: cents <= 0 ? 'enter the total first' : (sumCustom === cents ? 'adds up to ' + this.fmt(cents) + ' ✓' : this.fmt(sumCustom) + ' of ' + this.fmt(cents) + ' assigned'),
+      customStatusColor: cents > 0 && sumCustom === cents ? '#1f6f54' : '#a06b1f',
+      splitHint: s.splitMode === 'custom' ? 'Enter what each person owes — it must add up to the total.' : 'Tap a face to leave them out of this one.',
+      onSave: () => this.saveExpense(),
+
+      // detail
+      detail: detail ? {
+        amountFmt: this.fmt(detail.cents),
+        title: detail.title,
+        payerName: this.dn(detail.payer, true),
+        when: detail.when,
+        flagged: detail.flagged, notFlagged: !detail.flagged, flaggedBy: detail.flaggedBy,
+        splitLabel: 'SPLIT · ' + (Object.keys(detail.split).length === 3 ? 'EVERYONE' : Object.keys(detail.split).length + ' PEOPLE'),
+        splitRows: Object.keys(detail.split).map(id => {
+          const p = this.person(id);
+          return { name: this.dn(id, true), initial: p.initial, bg: p.bg, fg: p.fg, amtFmt: this.fmt(detail.split[id]) };
+        }),
+        comments: detail.comments.map(c => ({ by: c.by, body: c.body, color: c.by === 'You' ? '#1f6f54' : '#5b4a78' }))
+      } : {},
+      commentDraft: s.commentDraft,
+      onComment: (e) => this.setState({ commentDraft: e.target.value }),
+      sendComment: () => {
+        const body = s.commentDraft.trim();
+        if (!body) return;
+        this.setState(st => ({
+          expenses: st.expenses.map(e => e.id === st.detailId ? Object.assign({}, e, { comments: e.comments.concat([{ by: 'You', body }]) }) : e),
+          commentDraft: ''
+        }));
+      },
+      flagTap: () => {
+        if (!detail) return;
+        this.setState(st => ({
+          expenses: st.expenses.map(e => e.id === st.detailId ? Object.assign({}, e, { flagged: !e.flagged, flaggedBy: e.flagged ? '' : 'You' }) : e)
+        }));
+        this.showToast(detail.flagged ? 'Flag resolved' : 'Flagged for review');
+      },
+      editTap: () => this.showToast('Editing isn\u2019t wired in this prototype'),
+      confirmDelete: s.confirmDelete, notConfirmDelete: !s.confirmDelete,
+      askDelete: () => this.setState({ confirmDelete: true }),
+      cancelDelete: () => this.setState({ confirmDelete: false }),
+      doDelete: () => {
+        this.setState(st => ({ expenses: st.expenses.filter(e => e.id !== st.detailId), screen: 'trip', confirmDelete: false }));
+        this.showToast('Expense deleted');
+      },
+
+      // settle
+      showAllInCard: !allFinal && !allZero && !s.closed,
+      showFinalRibbon: allFinal && !allZero && !s.closed,
+      youInBg: s.allIn[s.youId] ? '#1f6f54' : '#d3dcd6',
+      youInKnob: s.allIn[s.youId] ? '23px' : '3px',
+      toggleYouIn: () => this.setState(st => ({ allIn: Object.assign({}, st.allIn, { [st.youId]: !st.allIn[st.youId] }) })),
+      allInAvatars: this.PEOPLE.map(p => ({
+        label: p.initial + (s.allIn[p.id] ? '✓' : ''),
+        bg: p.bg, fg: p.fg,
+        ring: s.allIn[p.id] ? '#1f6f54' : 'transparent',
+        opacity: s.allIn[p.id] ? '1' : '.6',
+        onToggle: () => this.setState(st => ({ allIn: Object.assign({}, st.allIn, { [p.id]: !st.allIn[p.id] }) }))
+      })),
+      allInStatus: inCount === 3 ? 'everyone\u2019s in ✓' : inCount + ' of 3 in · waiting on ' + waiting.join(', '),
+      allFinal, notAllFinal: !allFinal,
+      transfersOpacity: allFinal ? '1' : '.72',
+      payBtnBg: allFinal ? '#1f6f54' : 'transparent',
+      payBtnColor: allFinal ? '#fff' : '#1f6f54',
+      balanceRows: this.PEOPLE.map(p => {
+        const b = bal[p.id];
+        const w = b === 0 ? '0%' : Math.max(8, Math.round(Math.abs(b) / maxAbs * 92)) + '%';
+        return {
+          name: p.name,
+          negW: b < 0 ? w : '0%', posW: b > 0 ? w : '0%',
+          amtFmt: this.fmtSigned(b),
+          color: b > 0 ? '#1f6f54' : (b < 0 ? '#b4653a' : '#8a978e')
+        };
+      }),
+      transfers: transfers.map(t => ({
+        fromName: this.dn(t.from, true),
+        toName: this.dn(t.to),
+        amtFmt: this.fmt(t.cents),
+        onPaid: () => {
+          if (this.isOffline()) { this.showToast('You\u2019re offline \u2014 writes are disabled'); return; }
+          this.setState(st => ({ settlements: st.settlements.concat([{ from: t.from, to: t.to, cents: t.cents }]) }));
+          this.showToast('Recorded: ' + this.dn(t.from, true) + ' → ' + this.dn(t.to) + ' ' + this.fmt(t.cents));
+        }
+      })),
+      allZero, notAllZero: !allZero,
+      settledSummary: this.fmt(totalSpend) + ' across ' + s.expenses.length + ' expenses, settled in ' + s.settlements.length + ' transfer' + (s.settlements.length === 1 ? '' : 's') + '.',
+      hasHistory: s.settlements.length > 0,
+      history: s.settlements.map(st => ({
+        label: this.dn(st.from, true) + ' → ' + this.dn(st.to),
+        amtFmt: this.fmt(st.cents)
+      })),
+      canClose: allZero && !s.closed,
+      showCloseHint: !allZero && !s.closed,
+      closeTrip: () => {
+        this.setState({ closed: true });
+        this.showToast('Trip closed — read-only from here');
+      }
+    };
+  }
+}
+
+</script>
+</body>
+</html>
