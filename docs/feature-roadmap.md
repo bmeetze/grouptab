@@ -16,6 +16,9 @@ score is `(Reach × Impact × Confidence) ÷ Effort`. Dependencies, security, an
 product strategy can move an item from its raw score position; those decisions
 are stated in the rationale.
 
+The brief numbers below match this table's Order column — brief `## N.` is
+always the feature listed at Order `N`.
+
 | Order | Feature                                                           |   R |   I |   C |   E | Score | Rationale                                                                                                                                       |
 | ----: | ----------------------------------------------------------------- | --: | --: | --: | --: | ----: | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 |     1 | Native sharing and invite entry                                   |   5 |   5 |   5 |   2 |  62.5 | Highest-leverage growth and recovery path; it makes every new or returning participant easier to serve.                                         |
@@ -41,22 +44,7 @@ subscription management and operational complexity disproportionate to the
 personal-use, no-account product. Payment processing is also out of scope;
 payment handoff means instructions and optional deep links only.
 
-## 1. Explicit creator identity
-
-**Problem.** Creating a trip silently claims the first name entered as the
-creator's identity. A creator who lists someone else first can accidentally
-claim the wrong participant, creating confusing balances and a hard-to-recover
-identity mismatch.
-
-**Solution shape.** Keep participant entry simple, but add an explicit
-“Which one is you?” selection before creation. The chosen participant is
-claimed by the creator's anonymous session and becomes the trip creator.
-
-**Success criteria.** A creator can see and confirm the identity they will
-claim before submitting. The selected person—not list position—becomes the
-claimed participant and `creator_participant_id`.
-
-## 2. Native sharing and invite entry
+## 1. Native sharing and invite entry
 
 **Problem.** On mobile, the current Share control only copies a link. It adds
 friction at the exact moment a trip needs to move into a group chat. People who
@@ -74,23 +62,47 @@ the future, they must retain comparable entropy or require an additional secret.
 Pasting a valid link or slug reaches the trip's claim screen; invalid input gives
 a clear error and reveals no trip information.
 
-## 3. Landing page and “Your trips” home
+## 2. Explicit creator identity
 
-**Problem.** A new visitor needs a quick explanation of what GroupTab does and
-why they should use it. A returning user instead needs fast access to trips
-already claimed on this device. One undifferentiated home screen serves neither
-case especially well.
+**Problem.** Creating a trip silently claims the first name entered as the
+creator's identity. A creator who lists someone else first can accidentally
+claim the wrong participant, creating confusing balances and a hard-to-recover
+identity mismatch.
 
-**Solution shape.** Present a lightweight landing page when the device has no
-claimed trips: concise value proposition, “Create a trip,” and “Join a trip.”
-When trips exist, present “Your trips,” ordered with active trips first and
-recently updated/closed trips afterward, while retaining both actions.
+**Solution shape.** Keep participant entry simple, but add an explicit
+“Which one is you?” selection before creation. The chosen participant is
+claimed by the creator's anonymous session and becomes the trip creator.
 
-**Success criteria.** A first-time visitor can understand the product and start
-or join a trip without needing a shared link already open. A returning user can
-open any claimed trip from Home in one tap.
+**Success criteria.** A creator can see and confirm the identity they will
+claim before submitting. The selected person—not list position—becomes the
+claimed participant and `creator_participant_id`.
 
-## 4. Settlement ledger, confirmation, and correction
+## 3. Description autocomplete
+
+**Problem.** Repeat trip costs such as groceries, parking, and dinner must be
+typed from scratch every time, adding friction to the app's fastest path.
+
+**Solution shape.** As the user enters a description, offer recent unique
+descriptions from the current trip as selectable suggestions. Keep the data
+local to the trip and retain free-form entry.
+
+**Success criteria.** A user can select a prior description in one tap without
+changing the amount, payer, or split. No new backend data model is required.
+
+## 4. Flag surfacing
+
+**Problem.** A flag is visible only on the individual feed row, so an unresolved
+dispute can be missed unless someone scrolls to that expense.
+
+**Solution shape.** Surface an active-trip count and direct link when one or
+more expenses are flagged. Reuse already fetched expense data; do not create a
+second dispute state.
+
+**Success criteria.** Any member can see that a trip has outstanding flagged
+expenses from a high-visibility trip surface and reach the affected expense in
+one tap.
+
+## 5. Settlement ledger, partial payments, confirmation, and correction
 
 **Problem.** Settlements currently affect balances immediately, but the payment
 record is too sparse for a real-world group payment: there is no confirmation,
@@ -110,7 +122,23 @@ exactly its recorded integer-cent amount. Users can correct an accidental
 payment without rewriting the record. Closing a trip remains based on balances
 derived from the ledger.
 
-## 5. Payment handoff
+## 6. Landing page and “Your trips” home
+
+**Problem.** A new visitor needs a quick explanation of what GroupTab does and
+why they should use it. A returning user instead needs fast access to trips
+already claimed on this device. One undifferentiated home screen serves neither
+case especially well.
+
+**Solution shape.** Present a lightweight landing page when the device has no
+claimed trips: concise value proposition, “Create a trip,” and “Join a trip.”
+When trips exist, present “Your trips,” ordered with active trips first and
+recently updated/closed trips afterward, while retaining both actions.
+
+**Success criteria.** A first-time visitor can understand the product and start
+or join a trip without needing a shared link already open. A returning user can
+open any claimed trip from Home in one tap.
+
+## 7. Payment handoff
 
 **Problem.** The settle screen says who should pay whom, but it does not help
 the payer complete the payment outside GroupTab. This leaves the final,
@@ -125,7 +153,33 @@ not process money in GroupTab.
 the transfer card. No payment account details are required to create, join, or
 use a trip.
 
-## 6. Claim recovery and participant management
+## 8. Expense search and filters
+
+**Problem.** A long expense feed becomes difficult to inspect for a known cost,
+a person's entries, or unresolved disputes.
+
+**Solution shape.** Add client-side description search and a flagged-only
+filter first. Add payer filtering only if the simpler controls prove useful.
+
+**Success criteria.** A user can find matching expenses or show only flagged
+ones without changing any underlying trip data. An empty result explains that
+no expenses match the active criteria.
+
+## 9. Weighted splits
+
+**Problem.** Equal and exact-dollar custom splits do not make proportional
+costs quick to enter, such as one person having two drinks while everyone else
+has one.
+
+**Solution shape.** Add a third split mode where each included participant has
+an integer weight (for example, 1× or 2×). Convert weights to stored integer
+cent shares using a documented deterministic leftover-cent rule.
+
+**Success criteria.** Weights always produce positive shares summing exactly to
+the expense amount. Existing equal and custom split behavior is unchanged, and
+the mode does not require itemized receipts.
+
+## 10. Claim recovery and participant management
 
 **Problem.** Anonymous, device-bound claims are intentionally low-friction but
 can strand people after a lost device, browser-storage reset, or Safari/PWA
@@ -141,7 +195,7 @@ participant only when doing so cannot corrupt historical expenses and shares.
 identity. Participant changes preserve past expense math and clearly state why
 an unsafe removal is unavailable.
 
-## 7. Coordination reminders
+## 11. Coordination reminders
 
 **Problem.** Groups often stall because someone has not claimed a name, marked
 their expenses complete, or paid a transfer. The app exposes these states but
@@ -156,70 +210,19 @@ require push notifications or accounts in this phase.
 clear reminder in one or two taps. The message contains only the trip link and
 the minimum context needed to act.
 
-## 8. Expense date editing
+## 12. Link regeneration and revocation
 
-**Problem.** Expenses are dated when logged, not when incurred. On a trip,
-people commonly enter a receipt later, making the feed and CSV chronology less
-useful.
+**Problem.** A leaked invite slug remains a valid trip capability indefinitely.
+Members need a way to stop new access through a compromised or outdated link.
 
-**Solution shape.** Add an optional expense date that defaults to today and can
-be changed when adding or editing an expense. Preserve the separate record
-creation timestamp for audit/history purposes.
+**Solution shape.** Let an authorized trip owner replace the share slug and
+invalidate the old one. Existing claimed members retain access through their
+anonymous session; the UI clearly warns that the newly generated link must be
+re-shared.
 
-**Success criteria.** Users can backdate an expense without changing its amount,
-shares, or creation history. Feed and CSV date behavior is consistent and
-documented.
-
-## 9. Description suggestions
-
-**Problem.** Repeat trip costs such as groceries, parking, and dinner must be
-typed from scratch every time, adding friction to the app's fastest path.
-
-**Solution shape.** As the user enters a description, offer recent unique
-descriptions from the current trip as selectable suggestions. Keep the data
-local to the trip and retain free-form entry.
-
-**Success criteria.** A user can select a prior description in one tap without
-changing the amount, payer, or split. No new backend data model is required.
-
-## 10. Expense search and filters
-
-**Problem.** A long expense feed becomes difficult to inspect for a known cost,
-a person's entries, or unresolved disputes.
-
-**Solution shape.** Add client-side description search and a flagged-only
-filter first. Add payer filtering only if the simpler controls prove useful.
-
-**Success criteria.** A user can find matching expenses or show only flagged
-ones without changing any underlying trip data. An empty result explains that
-no expenses match the active criteria.
-
-## 11. Flagged-expense visibility
-
-**Problem.** A flag is visible only on the individual feed row, so an unresolved
-dispute can be missed unless someone scrolls to that expense.
-
-**Solution shape.** Surface an active-trip count and direct link when one or
-more expenses are flagged. Reuse already fetched expense data; do not create a
-second dispute state.
-
-**Success criteria.** Any member can see that a trip has outstanding flagged
-expenses from a high-visibility trip surface and reach the affected expense in
-one tap.
-
-## 12. Weighted splits
-
-**Problem.** Equal and exact-dollar custom splits do not make proportional
-costs quick to enter, such as one person having two drinks while everyone else
-has one.
-
-**Solution shape.** Add a third split mode where each included participant has
-an integer weight (for example, 1× or 2×). Convert weights to stored integer
-cent shares using a documented deterministic leftover-cent rule.
-
-**Success criteria.** Weights always produce positive shares summing exactly to
-the expense amount. Existing equal and custom split behavior is unchanged, and
-the mode does not require itemized receipts.
+**Success criteria.** The prior slug no longer returns a join view after
+regeneration. Existing members can still open the trip, and the new link is
+easy to share immediately.
 
 ## 13. Per-person spending summary
 
@@ -233,19 +236,19 @@ what a person ultimately owes.
 **Success criteria.** The totals reconcile to all recorded expenses and clearly
 label paid versus net amounts. No new money calculations are persisted.
 
-## 14. Link regeneration and revocation
+## 14. Expense date editing
 
-**Problem.** A leaked invite slug remains a valid trip capability indefinitely.
-Members need a way to stop new access through a compromised or outdated link.
+**Problem.** Expenses are dated when logged, not when incurred. On a trip,
+people commonly enter a receipt later, making the feed and CSV chronology less
+useful.
 
-**Solution shape.** Let an authorized trip owner replace the share slug and
-invalidate the old one. Existing claimed members retain access through their
-anonymous session; the UI clearly warns that the newly generated link must be
-re-shared.
+**Solution shape.** Add an optional expense date that defaults to today and can
+be changed when adding or editing an expense. Preserve the separate record
+creation timestamp for audit/history purposes.
 
-**Success criteria.** The prior slug no longer returns a join view after
-regeneration. Existing members can still open the trip, and the new link is
-easy to share immediately.
+**Success criteria.** Users can backdate an expense without changing its amount,
+shares, or creation history. Feed and CSV date behavior is consistent and
+documented.
 
 ## 15. Stricter permissions and audit trail
 
