@@ -147,3 +147,7 @@ The UI is fully specified in the design handoff package (`design_handoff_groupta
 - Stricter edit/delete permissions and audit trail
 - Multi-currency, receipts, itemization
 - Native app / push notifications
+
+See `docs/feature-roadmap.md` for prioritized, scoped briefs on these and other
+near-term opportunities (a coding-agent backlog, not a build queue) — a brief
+existing there doesn't mean it should be built without being explicitly asked for.

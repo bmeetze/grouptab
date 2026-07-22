@@ -13,6 +13,11 @@ reviewed; treat the codebase as production, not a prototype.
 - [docs/design-handoff.md](docs/design-handoff.md) — the Trailhead visual system:
   exact tokens, per-screen layouts and copy. [docs/prototype.html](docs/prototype.html)
   is the interactive pixel reference (open in a browser).
+- [docs/feature-roadmap.md](docs/feature-roadmap.md) — prioritized feature briefs for
+  future work: a backlog to point a coding agent at, not a build queue. A brief being
+  listed there is **not** standing authorization to build it — implement one only when
+  the owner explicitly asks for that brief, and turn it into a full implementation
+  plan first (per the doc's own preamble) before writing code.
 - The owner's workspace (`~/Documents/Claude/Projects/Group Trip Expense Splitter/`,
   not in this repo) holds the implementation plan, per-task review reports, and the
   build ledger. The spec is mirrored there — on behavior changes update both copies,
@@ -124,6 +129,9 @@ access path. The owner must also be told when a change needs a dashboard toggle
 
 ## Out of scope for v1 (spec §Future) — don't build without the owner asking
 
-Account upgrade, link regeneration/revocation, stricter permissions/audit trail,
-multi-currency, receipts, itemization, native apps/push, settlement idempotency
-constraints, trip delete.
+Receipts, itemization, native apps/push, and trip delete have no roadmap brief yet and
+stay fully out of scope. Account upgrade, link regeneration/revocation, stricter
+permissions/audit trail, multi-currency, and settlement idempotency now overlap with
+briefs in [docs/feature-roadmap.md](docs/feature-roadmap.md) (#16, #12, #15, #17, and
+#5 respectively) — a brief existing there is still not authorization to build it; only
+the owner explicitly asking for that brief is.
