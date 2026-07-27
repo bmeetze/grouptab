@@ -21,7 +21,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - run: npx vitest run --passWithNoTests
+      # Offline eval gate: typecheck + money/amount/CSV units + repo invariants.
+      # Live-database and E2E evals run locally (npm run eval:live / eval:e2e) —
+      # both write real rows, so they stay out of CI. See docs/evals.md.
+      - run: npm run eval
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

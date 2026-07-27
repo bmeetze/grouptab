@@ -17,14 +17,15 @@ Schema + RLS + RPCs: `supabase/schema.sql`.
 ## Docs
 - [docs/spec.md](docs/spec.md) — product spec (source of truth)
 - [docs/design-handoff.md](docs/design-handoff.md) + [docs/prototype.html](docs/prototype.html) — Trailhead visual system and interactive pixel reference
+- [docs/evals.md](docs/evals.md) — the standing correctness suite (three tiers, when to run each)
 - [CLAUDE.md](CLAUDE.md) — working guide for AI agents (and humans): architecture, invariants, conventions, DB-change workflow, gotchas
 
 ## Develop
 ```
 npm install && npm run dev      # http://localhost:5173/grouptab/
-npx vitest run                  # unit tests — money math (13), format (2), CSV (3) = 18
-node scripts/rls-check.mjs      # access isolation against live Supabase (8 checks)
+npm run eval                    # the gate: typecheck + money/amount/CSV units + repo invariants
+npm run eval:live               # access isolation + write-RPC contracts against live Supabase
 npx playwright install chromium # one-time browser install
-npx playwright test             # E2E happy path against localhost:5173 (starts the dev server)
+npm run eval:e2e                # flow evals against localhost:5173 (starts the dev server)
 npm run build                   # typecheck + production build
 ```
