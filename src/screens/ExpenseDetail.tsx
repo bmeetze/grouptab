@@ -142,6 +142,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
           amountCents: expense.amountCents,
           shares: expense.shares,
         }}
+        initialId={expense.id}
         saveLabel="Save changes"
         onSave={handleEditSave}
       />
