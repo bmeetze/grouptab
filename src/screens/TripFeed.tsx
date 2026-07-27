@@ -31,6 +31,8 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
   );
   const bal = you ? (balances[you.id] ?? 0) : 0;
   const totalSpend = expenses.reduce((s, e) => s + e.amountCents, 0);
+  // Derived from data already fetched — a flag is not a second dispute state.
+  const flagged = expenses.filter(e => e.flagged);
 
   const heroColor = bal > 0 ? 'var(--accent)' : bal < 0 ? 'var(--negative)' : 'var(--ink-faint)';
   const owedLabel = bal > 0 ? "you're owed" : bal < 0 ? 'you owe' : "you're even";
@@ -74,9 +76,22 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
       <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.5px', marginTop: 8, color: heroColor }}>
         {fmtCents(Math.abs(bal))}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 20 }}>
+      <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: flagged.length > 0 ? 12 : 20 }}>
         {owedLabel} · {fmtCents(totalSpend)} trip total
       </div>
+
+      {flagged.length > 0 && (
+        // One tap to the flagged expense. With more than one, this links to the
+        // most recent; when the flagged-only filter (roadmap #10) lands, point
+        // the multi-flag case at that instead.
+        <Link to={`/t/${slug}/e/${flagged[0].id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: 20 }}>
+          <Ribbon tone="warn">
+            {flagged.length === 1
+              ? `⚑ 1 expense flagged for review →`
+              : `⚑ ${flagged.length} expenses flagged for review →`}
+          </Ribbon>
+        </Link>
+      )}
 
       {expenses.length === 0 ? (
         <p style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 13, marginTop: 48 }}>
