@@ -112,8 +112,9 @@ export default function Home() {
             Split trip costs without the app-store detour.
           </h1>
           <button className="btn btn-primary" onClick={() => navigate('/new')}>+ New trip</button>
+          <button className="btn btn-outline" onClick={() => navigate('/join')}>Join a trip</button>
           <p style={{ fontSize: 12.5, color: 'var(--ink-faint)', textAlign: 'center' }}>
-            Got a link from a friend? Just open it.
+            Got a link from a friend? Open it, or paste it above.
           </p>
         </div>
       </div>
@@ -202,13 +203,22 @@ export default function Home() {
         </>
       )}
 
-      <button onClick={() => navigate('/new')} style={{
-        font: 'inherit', border: '1.5px dashed var(--disabled)', color: 'var(--ink-soft)',
-        background: 'transparent', borderRadius: 16, textAlign: 'center', padding: 15,
-        fontSize: 14.5, fontWeight: 600, cursor: 'pointer', minHeight: 48, width: '100%',
-      }}>
-        + New trip
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button onClick={() => navigate('/new')} style={{
+          font: 'inherit', border: '1.5px dashed var(--disabled)', color: 'var(--ink-soft)',
+          background: 'transparent', borderRadius: 16, textAlign: 'center', padding: 15,
+          fontSize: 14.5, fontWeight: 600, cursor: 'pointer', minHeight: 48, width: '100%',
+        }}>
+          + New trip
+        </button>
+        <button onClick={() => navigate('/join')} style={{
+          font: 'inherit', border: 'none', color: 'var(--ink-soft)',
+          background: 'transparent', borderRadius: 16, textAlign: 'center', padding: 12,
+          fontSize: 13.5, fontWeight: 600, cursor: 'pointer', minHeight: 44, width: '100%',
+        }}>
+          Join a trip with a link
+        </button>
+      </div>
     </div>
   );
 }

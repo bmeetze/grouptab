@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { computeBalances } from '../lib/money';
 import { fmtCents } from '../lib/format';
+import { shareTrip, tripUrl } from '../lib/share';
 import { Avatar, Ribbon, TabBar, participantIndex, useToast } from '../ui/components';
 import { OfflineBanner } from '../ui/OfflineBanner';
 import { useOnline } from '../data/useOnline';
@@ -41,10 +42,14 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
   const showFab = !closed && !stale && online;
 
   async function onShare() {
-    const url = `${location.origin}/grouptab/t/${slug}`;
-    let copied = false;
-    try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard can fail; the chip stays tappable to retry */ }
-    toast(copied ? 'Link copied — paste it in the group chat' : "Couldn't copy — long-press the address bar to share");
+    // shareTrip must be the first await in this handler — navigator.share
+    // needs the click's user activation, which an earlier await can consume.
+    const result = await shareTrip(tripUrl(slug), trip.name);
+    if (result === 'cancelled') return; // dismissed the share sheet; not an error
+    if (result === 'shared') return;    // the system sheet already confirmed it
+    toast(result === 'copied'
+      ? 'Link copied — paste it in the group chat'
+      : "Couldn't copy — long-press the address bar to share");
   }
 
   return (

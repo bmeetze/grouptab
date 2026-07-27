@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ensureSession } from '../data/session';
 import { createTrip } from '../data/api';
+import { copyLink, tripUrl } from '../lib/share';
 import { useToast } from '../ui/components';
 
 export default function CreateTrip() {
@@ -36,10 +37,13 @@ export default function CreateTrip() {
     try {
       await ensureSession();
       const { shareSlug } = await createTrip(tripName.trim(), names, you);
-      const url = `${location.origin}/grouptab/t/${shareSlug}`;
-      let copied = false;
-      try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard can fail; link is shareable from the trip header */ }
-      toast(copied ? 'Link copied — paste it in the group chat' : 'Trip created — share it with the ↗ button');
+      // Clipboard, not the share sheet: navigator.share needs the click's user
+      // activation and the createTrip await above may have consumed it. The
+      // trip header's share button is one tap away and does open the sheet.
+      const copied = await copyLink(tripUrl(shareSlug));
+      toast(copied === 'copied'
+        ? 'Link copied — paste it in the group chat'
+        : 'Trip created — share it with the ↗ button');
       navigate(`/t/${shareSlug}`);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create trip');
