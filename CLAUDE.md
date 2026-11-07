@@ -13,6 +13,8 @@ reviewed; treat the codebase as production, not a prototype.
 - [docs/design-handoff.md](docs/design-handoff.md) — the Trailhead visual system:
   exact tokens, per-screen layouts and copy. [docs/prototype.html](docs/prototype.html)
   is the interactive pixel reference (open in a browser).
+- [docs/evals.md](docs/evals.md) — the standing correctness suite: what each tier
+  asserts, when to run it, and where a new eval belongs.
 - The owner's workspace (`~/Documents/Claude/Projects/Group Trip Expense Splitter/`,
   not in this repo) holds the implementation plan, per-task review reports, and the
   build ledger. The spec is mirrored there — on behavior changes update both copies,
@@ -22,21 +24,25 @@ reviewed; treat the codebase as production, not a prototype.
 
 ```
 npm install && npm run dev      # http://localhost:5173/grouptab/  (note the base path)
-npx vitest run                  # 18 unit tests: money math, formatting, CSV
-node scripts/rls-check.mjs      # 8 access-isolation checks against the LIVE database
-npx playwright test             # E2E happy path (local only — see caveats below)
+npm run eval                    # THE GATE: tsc -b + the whole vitest suite (offline, ~2s)
+npm run eval:live               # RLS isolation + write-RPC contracts vs the LIVE database
+npm run eval:e2e                # Playwright flow evals (local only — see caveats below)
 npm run build                   # typecheck + production build (also makes dist/404.html)
 npm run lint                    # oxlint (template default; not in CI, run when it helps)
-git push                        # deploys: GitHub Action runs vitest + build → Pages
+git push                        # deploys: GitHub Action runs `npm run eval` + build → Pages
 ```
 
-Node 20+ (CI uses 20). Note: the E2E and rls-check both create permanent rows
-(trips, anonymous auth users) in the live database — accepted at personal scale,
-there is no cleanup path.
+The eval suite is described in [docs/evals.md](docs/evals.md) — read it before
+adding tests, and before "fixing" an invariant failure by widening an allowlist.
 
-Definition of green before you call any change done: `tsc -b` clean, vitest pass,
-build clean; run the E2E when you touched user flows; run rls-check when you touched
-anything database-adjacent.
+Node 20+ (CI uses 20). Note: the E2E and the live evals create permanent rows
+(trips, anonymous auth users) in the live database — accepted at personal scale,
+there is no cleanup path. That is why only tier 1 runs in CI.
+
+Definition of green before you call any change done: `npm run eval` clean and
+`npm run build` clean; add `npm run eval:live` when you touched anything
+database-adjacent (`supabase/`, `src/data/`), and `npm run eval:e2e` when you
+touched a user flow or screen.
 
 ## Architecture in one minute
 
