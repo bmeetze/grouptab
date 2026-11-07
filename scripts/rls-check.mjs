@@ -54,5 +54,23 @@ const { error: ownCreatorErr } = await bob.from('trips')
   .update({ creator_participant_id: bobParts[0].id }).eq('id', bTrip.trip_id).select();
 check('bob cannot reassign creator on his own trip', ownCreatorErr !== null);
 
+// ---- trip_rates (feature 01): member-read only, never written directly ----
+const { data: aliceParts } = await alice.from('participants').select('id, name').eq('trip_id', aTrip.trip_id);
+const ALICE = aliceParts.find(p => p.name === 'Alice').id;
+const { error: mxnErr } = await alice.rpc('add_expense', {
+  p_trip_id: aTrip.trip_id, p_payer_participant_id: ALICE, p_description: 'Tacos',
+  p_amount_cents: 85000, p_shares: { [ALICE]: 85000 }, p_currency: 'MXN', p_usd_nanos: 58600000 });
+if (mxnErr) throw mxnErr;
+
+const { data: bobSeesRates } = await bob.from('trip_rates').select('currency').eq('trip_id', aTrip.trip_id);
+check("bob cannot read alice's exchange rates", (bobSeesRates ?? []).length === 0);
+
+const { error: rateInsErr } = await bob.from('trip_rates').insert(
+  { trip_id: bTrip.trip_id, currency: 'EUR', usd_nanos_per_unit: 1 }).select();
+const { data: rateUpdData, error: rateUpdErr } = await alice.from('trip_rates')
+  .update({ usd_nanos_per_unit: 1 }).eq('trip_id', aTrip.trip_id).select();
+check('rates cannot be written directly, even on your own trip (set_rate only)',
+  rateInsErr !== null && (rateUpdErr !== null || (rateUpdData ?? []).length === 0));
+
 console.log(failures === 0 ? '\nRLS check: ALL PASS' : `\nRLS check: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

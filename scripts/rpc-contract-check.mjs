@@ -294,6 +294,87 @@ check('commenting on a closed trip is rejected',
 const { data: stillReadable } = await alice.from('expenses').select('id').eq('trip_id', tripC.trip_id);
 check('a closed trip is still fully readable', (stillReadable ?? []).length === 1);
 
+// --------------------------------------------------- multi-currency (01)
+
+section('multi-currency (rates are shared, set at first use, changed only via set_rate)');
+
+const { data: tripM, error: eM } = await alice.rpc('create_trip', {
+  p_trip_name: `RPC contract M ${stamp}`, p_names: ['Alice', 'Ann'], p_your_name: 'Alice',
+});
+if (eM) throw eM;
+const { data: partsM } = await alice.from('participants').select('id, name').eq('trip_id', tripM.trip_id);
+const M_ALICE = partsM.find(p => p.name === 'Alice').id, M_ANN = partsM.find(p => p.name === 'Ann').id;
+await bob.rpc('claim_participant', { p_slug: tripM.share_slug, p_participant_id: M_ANN });
+
+const addM = (c, over = {}) => c.rpc('add_expense', {
+  p_trip_id: tripM.trip_id, p_payer_participant_id: M_ALICE, p_description: 'Tacos',
+  p_amount_cents: 85000, p_shares: { [M_ALICE]: 42500, [M_ANN]: 42500 }, ...over,
+});
+const rateOf = async (cur) => (await alice.from('trip_rates').select('usd_nanos_per_unit')
+  .eq('trip_id', tripM.trip_id).eq('currency', cur).maybeSingle()).data?.usd_nanos_per_unit ?? null;
+
+let r = await rejects(addM(alice, { p_currency: 'MXN' }));
+check('the first expense in a new currency is rejected without a rate', r.ok, r.msg);
+
+const { data: mxnId, error: mxnErr } = await addM(alice, { p_currency: 'MXN', p_usd_nanos: 58600000 });
+const { data: mxnRow } = await alice.from('expenses').select('currency, amount_cents').eq('id', mxnId).maybeSingle();
+check('with a rate it is stored in its own currency, unconverted',
+  !mxnErr && mxnRow?.currency === 'MXN' && mxnRow?.amount_cents === 85000, mxnErr?.message);
+check('and the rate is saved to the trip', (await rateOf('MXN')) === 58600000);
+
+await addM(bob, { p_currency: 'MXN', p_usd_nanos: 1 });
+check('a later expense in that currency never overwrites the rate', (await rateOf('MXN')) === 58600000);
+
+r = await rejects(addM(alice, { p_currency: 'MX1', p_usd_nanos: 58600000 }));
+check('a malformed currency code is rejected', r.ok, r.msg);
+
+const { data: legacyId, error: legacyErr } = await alice.rpc('add_expense', {
+  p_trip_id: tripM.trip_id, p_payer_participant_id: M_ALICE, p_description: 'Old client',
+  p_amount_cents: 2000, p_shares: { [M_ALICE]: 1000, [M_ANN]: 1000 },
+});
+const { data: legacyRow } = await alice.from('expenses').select('currency').eq('id', legacyId).maybeSingle();
+check('an old client\'s five-argument add_expense still works, as USD',
+  !legacyErr && legacyRow?.currency === 'USD', legacyErr?.message);
+
+const { error: keepErr } = await alice.rpc('update_expense', {
+  p_expense_id: mxnId, p_payer_participant_id: M_ALICE, p_description: 'Tacos (edited)',
+  p_amount_cents: 90000, p_shares: { [M_ALICE]: 45000, [M_ANN]: 45000 },
+});
+const { data: keptRow } = await alice.from('expenses').select('currency').eq('id', mxnId).maybeSingle();
+check('an edit that omits the currency keeps it (old clients can\'t flip MXN to USD)',
+  !keepErr && keptRow?.currency === 'MXN', keepErr?.message);
+
+const editTo = (cur, nanos) => alice.rpc('update_expense', {
+  p_expense_id: mxnId, p_payer_participant_id: M_ALICE, p_description: 'Tacos',
+  p_amount_cents: 90000, p_shares: { [M_ALICE]: 45000, [M_ANN]: 45000 },
+  p_currency: cur, ...(nanos ? { p_usd_nanos: nanos } : {}),
+});
+r = await rejects(editTo('EUR'));
+check('switching an expense to a currency with no rate requires one', r.ok, r.msg);
+check('with a rate the switch saves that currency\'s rate too',
+  !(await rejects(editTo('EUR', 1080000000))).ok && (await rateOf('EUR')) === 1080000000);
+
+r = await rejects(carol.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'MXN', p_usd_nanos: 60000000 }));
+check('a non-member cannot set a rate', r.ok, r.msg);
+r = await rejects(alice.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'USD', p_usd_nanos: 1 }));
+check('USD has no rate to set', r.ok, r.msg);
+r = await rejects(alice.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'MXN', p_usd_nanos: 0 }));
+check('a non-positive rate is rejected', r.ok, r.msg);
+
+const allIn = async () => (await alice.from('participants').select('all_expenses_in')
+  .eq('trip_id', tripM.trip_id)).data.map(p => p.all_expenses_in);
+await alice.from('participants').update({ all_expenses_in: true }).eq('id', M_ALICE);
+await bob.from('participants').update({ all_expenses_in: true }).eq('id', M_ANN);
+await alice.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'MXN', p_usd_nanos: 58600000 });
+check('re-saving the same rate changes nothing (nobody loses all-in)', (await allIn()).every(v => v === true));
+const { error: setErr } = await bob.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'MXN', p_usd_nanos: 60000000 });
+check('any member can change a rate', !setErr && (await rateOf('MXN')) === 60000000, setErr?.message);
+check('changing a rate clears EVERYONE\'s all-in, not just the caller\'s', (await allIn()).every(v => v === false));
+
+await alice.from('trips').update({ status: 'closed' }).eq('id', tripM.trip_id);
+r = await rejects(alice.rpc('set_rate', { p_trip_id: tripM.trip_id, p_currency: 'MXN', p_usd_nanos: 61000000 }));
+check('set_rate is rejected on a closed trip', r.ok, r.msg);
+
 // ------------------------------------------------------------- release claim
 
 section('release claim (the lost-device recovery path)');

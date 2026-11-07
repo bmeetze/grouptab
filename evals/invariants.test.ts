@@ -174,7 +174,7 @@ describe('invariant: non-idempotent writes hold a synchronous ref lock', () => {
 
 describe('invariant: closed trips are read-only', () => {
   it('the server rejects writes to a closed trip in every write RPC', () => {
-    for (const fn of ['add_expense', 'update_expense', 'add_participant']) {
+    for (const fn of ['add_expense', 'update_expense', 'add_participant', 'set_rate']) {
       const body = schema.slice(schema.indexOf(`function public.${fn}(`));
       expect(body.slice(0, body.indexOf('$$;'))).toMatch(/trip_is_active/);
     }
@@ -200,8 +200,8 @@ describe('invariant: closed trips are read-only', () => {
 // ------------------------------------------------------------- database
 
 describe('invariant: database access model', () => {
-  it('row-level security is enabled on all six tables', () => {
-    for (const t of ['trips', 'participants', 'expenses', 'expense_shares', 'comments', 'settlements']) {
+  it('row-level security is enabled on all seven tables', () => {
+    for (const t of ['trips', 'participants', 'expenses', 'expense_shares', 'comments', 'settlements', 'trip_rates']) {
       expect(schema).toContain(`alter table public.${t} enable row level security;`);
     }
   });
@@ -230,6 +230,27 @@ describe('invariant: database access model', () => {
   it('expense_shares has no direct write policy of any kind', () => {
     const policies = [...schema.matchAll(/create policy (\w+) on public\.expense_shares for (\w+)/g)];
     expect(policies.map(m => m[2])).toEqual(['select']);
+  });
+
+  it('trip_rates is read-only to clients — rates change via add_expense / set_rate only', () => {
+    // A direct write path would let a member change a rate without the
+    // everyone-re-confirms reset that set_rate enforces (feature 01, decision 7).
+    const policies = [...schema.matchAll(/create policy (\w+) on public\.trip_rates for (\w+)/g)];
+    expect(policies.map(m => m[2])).toEqual(['select']);
+    expect(schema).toContain('revoke insert, update, delete on public.trip_rates from anon, authenticated;');
+  });
+
+  it('a rate change clears all-in for the whole trip, not just the caller', () => {
+    const setRate = schema.slice(schema.indexOf('function public.set_rate('));
+    expect(setRate.slice(0, setRate.indexOf('$$;')))
+      .toMatch(/update participants set all_expenses_in = false where trip_id = p_trip_id/);
+  });
+
+  it('a first-use rate never overwrites an existing one', () => {
+    for (const fn of ['add_expense', 'update_expense']) {
+      const body = schema.slice(schema.indexOf(`function public.${fn}(`));
+      expect(body.slice(0, body.indexOf('$$;')), fn).toMatch(/on conflict \(trip_id, currency\) do nothing/);
+    }
   });
 
   it('only the slug lookup and the keepalive ping are anon-callable', () => {
