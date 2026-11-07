@@ -141,3 +141,19 @@ export function approxTotalUsdCents(expenses: { currency: string; amountMinor: n
   for (const [currency, minor] of byCurrency) total += approxUsdCents(minor, currency, rates) ?? 0;
   return total;
 }
+
+/** USD balances for a whole loaded trip — the one call every screen makes
+ *  (Home, TripFeed and Settle each used to assemble computeBalances inputs). */
+export function tripUsdBalances(data: {
+  participants: { id: string }[];
+  expenses: { payerParticipantId: string; currency: string; amountMinor: number; shares: Record<string, number> }[];
+  settlements: { fromParticipantId: string; toParticipantId: string; amountCents: number }[];
+  rates: Rates;
+}): Record<string, number> {
+  return computeUsdBalances(
+    data.participants.map(p => p.id),
+    data.expenses.map(e => ({ payerId: e.payerParticipantId, currency: e.currency, amountMinor: e.amountMinor, shares: e.shares })),
+    data.settlements.map(s => ({ fromId: s.fromParticipantId, toId: s.toParticipantId, amountCents: s.amountCents })),
+    data.rates,
+  );
+}

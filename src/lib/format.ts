@@ -15,7 +15,7 @@ export function fmtSigned(cents: number): string {
 // Currency symbol from Intl ("MX$", "€", "¥"); digits from currency.ts so every
 // device renders the same stored minor units the same way.
 const symbols = new Map<string, string>();
-function symbolOf(currency: string): string {
+export function currencySymbol(currency: string): string {
   let sym = symbols.get(currency);
   if (sym === undefined) {
     try {
@@ -38,5 +38,5 @@ export function fmtMoney(minor: number, currency: string): string {
   const unit = 10 ** exp;
   const major = Math.floor(abs / unit).toLocaleString('en-US');
   const frac = exp > 0 ? `.${String(abs % unit).padStart(exp, '0')}` : '';
-  return `${sign}${symbolOf(currency)}${major}${frac}`;
+  return `${sign}${currencySymbol(currency)}${major}${frac}`;
 }

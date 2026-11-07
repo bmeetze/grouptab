@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Participant, ScreenProps } from '../lib/types';
-import { fmtCents } from '../lib/format';
-import { Avatar, avatarColors, participantIndex, useToast } from '../ui/components';
+import { fmtMoney } from '../lib/format';
+import { Avatar, ExpenseAmount, avatarColors, participantIndex, useToast } from '../ui/components';
 import { addComment, deleteExpense, setFlag, updateExpense } from '../data/api';
 import { ExpenseForm, type ExpenseFormValues } from './AddExpense';
 import { useOnline } from '../data/useOnline';
@@ -67,7 +67,8 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
   const handleEditSave = async (v: ExpenseFormValues) => {
     await updateExpense({
       expenseId: expense.id, payerParticipantId: v.payerParticipantId,
-      description: v.description, amountCents: v.amountCents, shares: v.shares,
+      description: v.description, currency: v.currency, amountMinor: v.amountMinor, shares: v.shares,
+      usdNanos: v.usdNanos,
     });
     toast('Saved');
     setEditing(false);
@@ -139,8 +140,10 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
         initial={{
           payerParticipantId: expense.payerParticipantId,
           description: expense.description,
-          amountCents: expense.amountCents,
+          currency: expense.currency,
+          amountMinor: expense.amountMinor,
           shares: expense.shares,
+          usdNanos: null,
         }}
         initialId={expense.id}
         saveLabel="Save changes"
@@ -180,7 +183,9 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
       </header>
 
       <div style={{ marginTop: 14, textAlign: 'center' }}>
-        <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-.5px' }}>{fmtCents(expense.amountCents)}</div>
+        <div style={{ letterSpacing: '-.5px', display: 'flex', justifyContent: 'center' }}>
+          <ExpenseAmount minor={expense.amountMinor} currency={expense.currency} rates={data.rates} size={32} />
+        </div>
         <div style={{ fontSize: 15, fontWeight: 600, marginTop: 3 }}>
           {expense.description}
           {expense.updatedAt != null && (
@@ -222,7 +227,7 @@ export default function ExpenseDetail({ slug, data, refetch }: ScreenProps) {
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Avatar name={p.name} index={participantIndex(participants, p.id)} size={26} />
             <span style={{ fontSize: 13.5, flex: 1 }}>{displayName(p)}</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtCents(expense.shares[p.id])}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtMoney(expense.shares[p.id], expense.currency)}</span>
           </div>
         ))}
         <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>leftover cents go to the payer</div>

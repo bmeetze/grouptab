@@ -42,12 +42,12 @@ export function applyKey(amountStr: string, k: string, decimals = 2): string {
 
 // '' -> $0.00; otherwise renders the string as-typed, padding the decimal
 // part to 2 digits once a '.' is present ("48.5" -> "$48.50").
-export function formatAmountDisplay(amountStr: string): string {
-  if (!amountStr) return '$0.00';
-  if (amountStr.endsWith('.')) return `$${amountStr}`;
+export function formatAmountDisplay(amountStr: string, decimals = 2, symbol = '$'): string {
+  if (!amountStr) return decimals === 0 ? `${symbol}0` : `${symbol}0.${'0'.repeat(decimals)}`;
+  if (amountStr.endsWith('.')) return `${symbol}${amountStr}`;
   const [intPart, decPart] = amountStr.split('.');
-  const dollars = intPart === '' ? '0' : intPart;
-  return decPart === undefined ? `$${dollars}` : `$${dollars}.${decPart.padEnd(2, '0')}`;
+  const whole = intPart === '' ? '0' : intPart;
+  return decPart === undefined ? `${symbol}${whole}` : `${symbol}${whole}.${decPart.padEnd(decimals, '0')}`;
 }
 
 // The only places a string amount becomes integer minor units, and back.
