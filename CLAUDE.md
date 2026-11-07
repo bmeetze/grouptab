@@ -7,18 +7,27 @@ reviewed; treat the codebase as production, not a prototype.
 
 ## Read these before changing product behavior
 
-- [docs/spec.md](docs/spec.md) — the product spec: goals, flows, money rules, edge
-  cases, access model. **Source of truth.** Where it and the design prototype
-  disagree, the spec wins.
+Docs follow one rule: **each fact lives in exactly one file.**
+
+- [docs/spec.md](docs/spec.md) — what the product does **today**. Shipped behavior
+  only — **source of truth**. Where it and the design prototype disagree, the spec wins.
+- [docs/roadmap.md](docs/roadmap.md) — what's next and in what order. Priority only;
+  no design detail.
+- [docs/features/](docs/features/) — one doc per feature in active work: decisions,
+  open questions, spec delta, acceptance criteria. A feature doc describes
+  **proposed** behavior — never treat it as current. Don't plan or build a feature
+  whose doc still has open questions; raise them with the owner.
+- [docs/plans/](docs/plans/) — implementation plans, written in plan mode and
+  reviewed before code. Each is linked from its feature doc.
 - [docs/design-handoff.md](docs/design-handoff.md) — the Trailhead visual system:
   exact tokens, per-screen layouts and copy. [docs/prototype.html](docs/prototype.html)
   is the interactive pixel reference (open in a browser).
 - [docs/evals.md](docs/evals.md) — the standing correctness suite: what each tier
   asserts, when to run it, and where a new eval belongs.
-- The owner's workspace (`~/Documents/Claude/Projects/Group Trip Expense Splitter/`,
-  not in this repo) holds the implementation plan, per-task review reports, and the
-  build ledger. The spec is mirrored there — on behavior changes update both copies,
-  or if you can't reach the workspace, tell the owner the mirror needs syncing.
+
+Shipping a feature: merge its spec delta into `docs/spec.md` in the same PR, set the
+feature doc's status to Shipped, and move its roadmap row to Shipped. The repo is
+canonical — there is no workspace mirror to sync.
 
 ## Commands
 
@@ -130,8 +139,9 @@ access path. The owner must also be told when a change needs a dashboard toggle
 - Vitest excludes `e2e/**` (`vite.config.ts` imports `defineConfig` from
   `vitest/config` for this) — don't "simplify" that import back to `vite`.
 
-## Out of scope for v1 (spec §Future) — don't build without the owner asking
+## Not yet in the product — don't build without the owner asking
 
-Account upgrade, link regeneration/revocation, stricter permissions/audit trail,
-multi-currency, receipts, itemization, native apps/push, settlement idempotency
-constraints, trip delete.
+Everything open on [docs/roadmap.md](docs/roadmap.md) is unbuilt. Build one only when
+the owner pulls it into active work and its feature doc has no open questions. Also
+out of scope until roadmapped: receipts, itemization, native apps/push, settlement
+idempotency constraints, trip delete.

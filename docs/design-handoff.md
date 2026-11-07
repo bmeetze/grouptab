@@ -6,7 +6,7 @@
 
 GroupTab is a mobile-first web app for splitting expenses on group trips. This handoff covers the complete v1 UI: home (trip list), create trip, join/claim name, trip screen (expense feed), add expense, expense detail, people (claim management), and settle up — including the full settle lifecycle (draft → all-in/final → paid → closed) and offline/closed states.
 
-The product spec (data model, money rules, architecture: React PWA + Supabase) lives in the project spec (`../grouptab-design-spec.md`) — the single source of truth; where it and this package disagree, the spec wins. This package covers the **design and behavior**; implement against that spec's stack — React (Vite) PWA, Supabase Postgres/Realtime/anonymous auth.
+The product spec (data model, money rules, architecture: React PWA + Supabase) lives in the project spec ([spec.md](spec.md)) — the single source of truth; where it and this package disagree, the spec wins. This package covers the **design and behavior**; implement against that spec's stack — React (Vite) PWA, Supabase Postgres/Realtime/anonymous auth.
 
 ## About the Design Files
 

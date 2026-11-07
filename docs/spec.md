@@ -1,10 +1,9 @@
-> **Repo mirror.** The owner's working copy lives in their workspace (`Projects/Group Trip Expense Splitter/grouptab-design-spec.md`). If you change product behavior, update BOTH copies. In this repo: the design handoff is [design-handoff.md](design-handoff.md), the interactive prototype is [prototype.html](prototype.html).
+> **What this file is.** The spec of the product as it works **today** — shipped behavior only. Proposed changes live in [features/](features/) until they ship; priorities live in [roadmap.md](roadmap.md). When a feature ships, merge its spec delta here in the same PR. Design handoff: [design-handoff.md](design-handoff.md); interactive prototype: [prototype.html](prototype.html).
 
-# GroupTab — Group Trip Expense Splitter — Design Spec
+# GroupTab — Group Trip Expense Splitter — Spec
 
-**Date:** 2026-07-09 (original 2026-07-08; consolidated after the design/prototyping phase — this is the single source of truth)
-**Status:** Design final, pending implementation plan
-**Working name:** GroupTab (placeholder, easy to change)
+**Status:** v1 shipped July 2026 (live at https://bmeetze.github.io/grouptab/); onboarding batch shipped November 2026
+**Originally consolidated:** 2026-07-09, after the design/prototyping phase
 
 ## Overview
 
@@ -147,10 +146,6 @@ Focused on the correctness core, per the simplest-and-cheapest constraint:
 
 The UI is fully specified in the design handoff package (`design_handoff_grouptab/`): Trailhead visual system (Instrument Sans, pine green `#1f6f54` on off-white `#f4f6f4`, amber — never red — for owing), an interactive hi-fi prototype covering every screen and state, and a README with exact tokens, layouts, and behaviors. One deliberate addition in this spec is not shown in the prototype: the **payer picker** on the Add expense screen ("Paid by" opens a participant list). Where this spec and the prototype disagree, this spec wins.
 
-## Future (Public Launch) Considerations — explicitly out of v1 scope
+## Future work
 
-- Anonymous-to-real account upgrade flow
-- Link regeneration / revocation
-- Stricter edit/delete permissions and audit trail
-- Multi-currency, receipts, itemization
-- Native app / push notifications
+Not part of current behavior. Everything proposed — multi-currency, account upgrade, link regeneration, stricter permissions and the rest — is prioritized in [roadmap.md](roadmap.md) and designed in [features/](features/).
