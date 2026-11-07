@@ -1,6 +1,6 @@
 # 01 — Multi-currency
 
-**Status:** Designing — open questions closed 2026-11-07. Next: implementation plan.
+**Status:** Planned — plan approved 2026-11-07: [plans/01-multi-currency.md](../plans/01-multi-currency.md).
 **Roadmap:** #1 (R3 · I5 · C4 · E3 · score 20.0) — see [roadmap.md](../roadmap.md)
 **Started:** 2026-11-07
 
@@ -49,13 +49,16 @@ owner accepted the recommendation for 8, 9, 12).
    so transfers return to DRAFT and the group re-confirms. Rejected on closed trips.
 8. **Supported currencies are the rate source's list** (~30 ECB currencies:
    MXN, EUR, GBP, JPY, CAD and other majors) plus USD. Decimal places per currency
-   come from the browser's `Intl.NumberFormat` (JPY 0, most 2). The database stores
-   integer minor units and never needs the exponent.
+   come from a hardcoded ISO 4217 table (JPY/KRW/ISK 0, the rest 2), not the
+   browser: stored amounts are minor units, so every device must agree, and `Intl`
+   data differs between browsers for a few currencies. `Intl` supplies the symbol
+   only. The database stores integer minor units and never needs the exponent.
    *Accepted trade-off:* less-common currencies (e.g. VND, PEN) aren't offered until
    the rate source changes.
 9. **Conversion rounding: largest remainder, per person per currency.** Each
    person's balance in a currency is converted exactly (integer math; the rate is
-   stored as an exact decimal and applied as an integer ratio, never a float),
+   stored as an integer — billionths of a USD per major unit, `bigint` — because the
+   schema allows no decimal types; MXN 0.0586 → 58,600,000),
    floored to the cent, and the cents still needed for the group to sum to exactly
    $0.00 go to the largest remainders, ties broken by participant order. USD
    balances need no conversion. This is the balance-level analog of the existing
@@ -91,7 +94,7 @@ None. (Closed 2026-11-07 — see decisions 6–12.)
 - **Data model:** `expenses.currency` (ISO 4217, default `'USD'`), amounts and
   shares in that currency's minor units (the existing `amount_cents` columns,
   renamed or documented as minor units); `trip_rates` (trip_id, currency,
-  usd_per_unit as exact numeric, set_by, set_at; one row per trip and currency;
+  usd_nanos_per_unit bigint, set_by, set_at; one row per trip and currency;
   RPC-only writes; in the realtime publication).
 - **Money rules:** balances per currency in integer minor units; conversion to USD
   cents by decision 9; settlements in USD; transfers in USD.
@@ -115,8 +118,8 @@ None. (Closed 2026-11-07 — see decisions 6–12.)
 
 ## Implementation plan
 
-*Not written yet.* Write it in plan mode as `docs/plans/01-multi-currency.md` and
-link it here. Must cover: the `supabase/migrations/` snippet and the matching
+[plans/01-multi-currency.md](../plans/01-multi-currency.md) — approved 2026-11-07.
+It covers: the `supabase/migrations/` snippet and the matching
 `schema.sql` change (`expenses.currency`, `trip_rates`, `set_rate`, `add_expense`
 taking currency and a first-use rate); `update_expense` (changing an expense's
 currency to one without a rate); `scripts/rpc-contract-check.mjs` and
