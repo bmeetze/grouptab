@@ -144,3 +144,58 @@ describe('formatAmountDisplay', () => {
     }
   });
 });
+
+// ---- multi-currency (feature 01): decimals per currency, rates as nanos ----
+import {
+  sanitizeDecimalString as sanitize, appendDigitOrDot as append, applyKey as key,
+  parseAmountStrToMinor, minorToAmountStr, parseRateToNanos, nanosToRateString,
+} from './amount';
+
+describe('amount entry in a zero-decimal currency (JPY)', () => {
+  it('the keypad ignores "." and allows no decimals', () => {
+    expect(append('12', '.', 0)).toBe('12');
+    expect(append('', '.', 0)).toBe('');
+    expect(append('12', '3', 0)).toBe('123');
+    expect(key('120', '⌫', 0)).toBe('12');
+  });
+  it('sanitizing drops any decimal part', () => {
+    expect(sanitize('1,200.50', 0)).toBe('1200');
+    expect(sanitize('007', 0)).toBe('7');
+  });
+  it('parses and prints whole units', () => {
+    expect(parseAmountStrToMinor('1200', 0)).toBe(1200);
+    expect(minorToAmountStr(1200, 0)).toBe('1200');
+  });
+  it('2-decimal defaults are unchanged', () => {
+    expect(sanitize('12.345')).toBe('12.34');
+    expect(parseAmountStrToMinor('48.5')).toBe(4850);
+    expect(minorToAmountStr(4850)).toBe('48.50');
+  });
+});
+
+describe('exchange rates as integer nanos', () => {
+  it('parses typed and API rates exactly, with no float', () => {
+    expect(parseRateToNanos('0.0586')).toBe(58_600_000);
+    expect(parseRateToNanos('1.08')).toBe(1_080_000_000);
+    expect(parseRateToNanos('0.0000625')).toBe(62_500);         // IDR
+    expect(parseRateToNanos(String(0.05862))).toBe(58_620_000);  // API JSON number
+    expect(parseRateToNanos(' .5 ')).toBe(500_000_000);
+    expect(parseRateToNanos('2')).toBe(2_000_000_000);
+  });
+  it('rounds past 9 decimals half up', () => {
+    expect(parseRateToNanos('0.0000000014')).toBe(1);
+    expect(parseRateToNanos('0.0000000015')).toBe(2);
+  });
+  it('rejects junk, zero and forms it cannot parse exactly', () => {
+    for (const bad of ['', '.', 'abc', '0', '0.000', '-1', '1e-7', '1.2.3', '$0.05']) {
+      expect(parseRateToNanos(bad), bad).toBeNull();
+    }
+  });
+  it('round-trips for display and editing', () => {
+    for (const n of [58_600_000, 1_080_000_000, 62_500, 2_000_000_000, 1]) {
+      expect(parseRateToNanos(nanosToRateString(n))).toBe(n);
+    }
+    expect(nanosToRateString(58_600_000)).toBe('0.0586');
+    expect(nanosToRateString(2_000_000_000)).toBe('2');
+  });
+});

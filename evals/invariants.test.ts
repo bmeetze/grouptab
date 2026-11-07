@@ -62,6 +62,16 @@ describe('invariant: integer cents everywhere', () => {
     expect(hits(['src/lib/money.ts'], /parseFloat|\.toFixed\(|Number\(|Math\.round/)).toEqual([]);
   });
 
+  it('currency conversion is BigInt-only and lives in fx.ts', () => {
+    // fx.ts is the one place a foreign amount becomes USD (feature 01). A float
+    // there would reintroduce exactly the drift integer cents exist to prevent;
+    // a decimal literal there is almost certainly a rate or factor as a float.
+    expect(hits(['src/lib/fx.ts'], /parseFloat|\.toFixed\(|Math\.(round|floor|ceil|trunc)|\b\d+\.\d+\b/)).toEqual([]);
+    expect(read('src/lib/fx.ts')).toMatch(/BigInt\(/);
+    // Screens never convert inline; they go through fx.ts.
+    expect(hits(screenFiles, /usd_nanos|nanos\s*[*/]/)).toEqual([]);
+  });
+
   it('money.ts exports the three functions every displayed number derives from', () => {
     const core = read('src/lib/money.ts');
     for (const fn of ['computeEqualSplit', 'computeBalances', 'simplifyDebts']) {
