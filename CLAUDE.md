@@ -119,7 +119,9 @@ access path. The owner must also be told when a change needs a dashboard toggle
   enough data (it's the only table with a client-facing delete path) — add it to
   any new table whose deletes clients must observe.
 - A twice-weekly GitHub Action (`keepalive.yml`) pings the database so the Supabase
-  free tier never pauses. The Supabase URL + publishable key are hardcoded in THREE
+  free tier never pauses, then re-enables itself via the API so GitHub's 60-day
+  no-commit rule can't switch the schedule off (it did once, Sep 2026, and the
+  database paused). The Supabase URL + publishable key are hardcoded in THREE
   places — `src/lib/config.ts`, `scripts/rls-check.mjs`, `.github/workflows/keepalive.yml`
   — update all three if the project ever moves.
 - iOS: Safari and installed PWAs don't share storage — users should install first,
