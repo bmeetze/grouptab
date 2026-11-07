@@ -144,7 +144,7 @@ Focused on the correctness core, per the simplest-and-cheapest constraint:
 
 ## Design Reference
 
-The UI is fully specified in the design handoff package (`design_handoff_grouptab/`): Trailhead visual system (Instrument Sans, pine green `#1f6f54` on off-white `#f4f6f4`, amber — never red — for owing), an interactive hi-fi prototype covering every screen and state, and a README with exact tokens, layouts, and behaviors. One deliberate addition in this spec is not shown in the prototype: the **payer picker** on the Add expense screen ("Paid by" opens a participant list). Where this spec and the prototype disagree, this spec wins.
+The UI is fully specified in the design handoff ([design-handoff.md](design-handoff.md), with the interactive prototype at [prototype.html](prototype.html)): Trailhead visual system (Instrument Sans, pine green `#1f6f54` on off-white `#f4f6f4`, amber — never red — for owing), an interactive hi-fi prototype covering every screen and state, and a README with exact tokens, layouts, and behaviors. One deliberate addition in this spec is not shown in the prototype: the **payer picker** on the Add expense screen ("Paid by" opens a participant list). Where this spec and the prototype disagree, this spec wins.
 
 ## Future work
 

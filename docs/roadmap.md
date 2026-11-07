@@ -20,7 +20,7 @@ override either, and the "why" column says when they do.
 
 | # | Feature | R | I | C | E | Score | Why it sits here | Feature doc |
 | --: | --- | --: | --: | --: | --: | --: | --- | --- |
-| 1 | Multi-currency | 3 | 5 | 4 | 3 | 20.0 | Demand proven; Tricount and Splid support 150+ currencies. Log each expense's currency, convert once at settle-up | [01](features/01-multi-currency.md) |
+| 1 | Multi-currency | 3 | 5 | 4 | 3 | 20.0 | Above #2 despite a lower score: demand proven on a real trip, and Tricount and Splid support 150+ currencies. Log each expense's currency, convert once at settle-up | [01](features/01-multi-currency.md) |
 | 2 | Settlement ledger, partial payments, corrections | 4 | 5 | 5 | 3 | 33.3 | Financial correctness; must come before payment handoff | — |
 | 3 | Stricter permissions and audit trail | 2 | 5 | 3 | 4 | 7.5 | High impact only once the app is used beyond trusted groups | — |
 | 4 | Landing page and "Your trips" home | 5 | 4 | 4 | 3 | 26.7 | Gives new users a front door and returning users a way back | — |
