@@ -10,6 +10,10 @@ export async function createTrip(page: Page, names = 'Erin, Sam'): Promise<strin
   await page.goto('new');
   await page.getByPlaceholder('Tahoe 2026').fill(`E2E ${Date.now()}`);
   await page.getByPlaceholder('You, Jake, Maya').fill(names);
+  // Creation requires an explicit "Which one is you?" pick — no auto-claim.
+  // Claim the first listed name so specs can treat it as "You".
+  const you = names.split(',')[0].trim();
+  await page.getByRole('button', { name: you, exact: true }).click();
   await page.getByRole('button', { name: 'Create & copy link' }).click();
   await expect(page.getByText("you're even")).toBeVisible();
 

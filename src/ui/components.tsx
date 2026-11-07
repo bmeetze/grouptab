@@ -80,10 +80,15 @@ export function TabBar({ slug, active }: { slug: string; active: 'home' | 'expen
   );
 }
 
-export function Ribbon({ children }: { children: ReactNode }) {
+// `tone` picks the token pair only — 'warn' is the amber used for flags and
+// owing, never red (see the design conventions in CLAUDE.md).
+export function Ribbon({ children, tone = 'accent' }:
+  { children: ReactNode; tone?: 'accent' | 'warn' }) {
   return (
     <div style={{
-      background: 'var(--accent-tint)', color: 'var(--accent)', borderRadius: 14,
+      background: tone === 'warn' ? 'var(--warn-bg)' : 'var(--accent-tint)',
+      color: tone === 'warn' ? 'var(--warn-fg)' : 'var(--accent)',
+      borderRadius: 14,
       padding: '10px 14px', fontSize: 13, fontWeight: 600, textAlign: 'center',
     }}>{children}</div>
   );

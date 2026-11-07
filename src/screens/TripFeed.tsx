@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { computeBalances } from '../lib/money';
 import { fmtCents } from '../lib/format';
+import { shareTrip, tripUrl } from '../lib/share';
 import { Avatar, Ribbon, TabBar, participantIndex, useToast } from '../ui/components';
 import { OfflineBanner } from '../ui/OfflineBanner';
 import { useOnline } from '../data/useOnline';
@@ -31,6 +32,8 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
   );
   const bal = you ? (balances[you.id] ?? 0) : 0;
   const totalSpend = expenses.reduce((s, e) => s + e.amountCents, 0);
+  // Derived from data already fetched — a flag is not a second dispute state.
+  const flagged = expenses.filter(e => e.flagged);
 
   const heroColor = bal > 0 ? 'var(--accent)' : bal < 0 ? 'var(--negative)' : 'var(--ink-faint)';
   const owedLabel = bal > 0 ? "you're owed" : bal < 0 ? 'you owe' : "you're even";
@@ -39,10 +42,14 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
   const showFab = !closed && !stale && online;
 
   async function onShare() {
-    const url = `${location.origin}/grouptab/t/${slug}`;
-    let copied = false;
-    try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard can fail; the chip stays tappable to retry */ }
-    toast(copied ? 'Link copied — paste it in the group chat' : "Couldn't copy — long-press the address bar to share");
+    // shareTrip must be the first await in this handler — navigator.share
+    // needs the click's user activation, which an earlier await can consume.
+    const result = await shareTrip(tripUrl(slug), trip.name);
+    if (result === 'cancelled') return; // dismissed the share sheet; not an error
+    if (result === 'shared') return;    // the system sheet already confirmed it
+    toast(result === 'copied'
+      ? 'Link copied — paste it in the group chat'
+      : "Couldn't copy — long-press the address bar to share");
   }
 
   return (
@@ -74,9 +81,22 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
       <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.5px', marginTop: 8, color: heroColor }}>
         {fmtCents(Math.abs(bal))}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 20 }}>
+      <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: flagged.length > 0 ? 12 : 20 }}>
         {owedLabel} · {fmtCents(totalSpend)} trip total
       </div>
+
+      {flagged.length > 0 && (
+        // One tap to the flagged expense. With more than one, this links to the
+        // most recent; when the flagged-only filter (roadmap #10) lands, point
+        // the multi-flag case at that instead.
+        <Link to={`/t/${slug}/e/${flagged[0].id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: 20 }}>
+          <Ribbon tone="warn">
+            {flagged.length === 1
+              ? `⚑ 1 expense flagged for review →`
+              : `⚑ ${flagged.length} expenses flagged for review →`}
+          </Ribbon>
+        </Link>
+      )}
 
       {expenses.length === 0 ? (
         <p style={{ textAlign: 'center', color: 'var(--ink-faint)', fontSize: 13, marginTop: 48 }}>

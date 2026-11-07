@@ -33,15 +33,21 @@ A mobile-first web app for splitting expenses on group trips. Built because Spli
 ## Product Design
 
 ### Create a trip
-Creator opens the app, names the trip ("Tahoe 2026"), types in participant names, and claims their own name. They get a share link to post in the group chat. No account required.
+Creator opens the app, names the trip ("Tahoe 2026"), and types in participant names. They then **tap which name is theirs** — the selection is required and has no default, so listing someone else first can't silently claim the wrong participant. That selection (not list position) becomes the claimed participant and the trip's `creator_participant_id`. They get a share link to post in the group chat. No account required.
 
 ### Join
 A friend taps the link, sees the trip and its participant list, taps their unclaimed name, and is in. Their device remembers the claim from then on. Add-to-home-screen makes it feel like an app.
+
+Someone who has the link but not an open browser tab can also reach a trip through **Join a trip** on Home: paste a full invite URL or a bare slug. Input is only shape-checked locally (16 lowercase hex chars, any origin accepted) and never probed against the database before navigating — the box must not become an oracle for guessing slugs. Unrecognisable input gives an inline error; a well-formed slug that doesn't resolve gets the normal "Trip not found."
+
+### Sharing
+The trip header's share control opens the **system share sheet** where the Web Share API is available and falls back to copy-to-clipboard elsewhere. Dismissing the sheet is silent, not an error. Trip creation stays on clipboard-only: `navigator.share` requires user activation, which the create round-trip can consume.
 
 ### Trip screen
 - Your net balance at top ("you're owed $84") and trip total spend
 - Expense feed below, newest first, updating live as others log expenses
 - Flagged expenses carry a visible badge
+- When any expense is flagged, a banner above the feed shows the count and links straight to the flagged expense, so an unresolved dispute isn't buried in a long feed. Derived from the loaded expenses — a flag is not a second dispute state.
 
 Readiness ("all in") status intentionally does **not** appear here — it lives on the Settle tab only, where the decision it informs actually happens (decided 2026-07-09, keeps the feed clean).
 
@@ -49,6 +55,7 @@ Readiness ("all in") status intentionally does **not** appear here — it lives 
 One screen optimized for speed:
 - Amount keypad front and center (in-app keypad avoids the mobile keyboard sliding over the layout and iOS zoom-on-focus; physical keyboard also works on desktop — digits, backspace, Enter to save)
 - **Description is required** — save is disabled until both amount and description are filled; the group needs to know what each expense was
+- Typing a description offers up to four matching descriptions already used on this trip as one-tap chips (recent first). Selecting one sets the description only — amount, payer and split are untouched. Trip-local, no new stored data.
 - Payer defaults to *you*; tapping **"Paid by"** opens a participant picker so an expense someone else paid can be logged on their behalf (decided 2026-07-09; not shown in the prototype — see Design Reference)
 - Split defaults to *everyone, equally*
 - Charging a subset: tap participant avatars to toggle them out

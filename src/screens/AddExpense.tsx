@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ScreenProps, TripData, Participant } from '../lib/types';
 import { computeEqualSplit } from '../lib/money';
@@ -6,6 +6,7 @@ import {
   applyKey, appendDigitOrDot, centsToAmountStr, formatAmountDisplay,
   parseAmountStrToCents, sanitizeDecimalString,
 } from '../lib/amount';
+import { suggestDescriptions } from '../lib/suggest';
 import { fmtCents } from '../lib/format';
 import { addExpense } from '../data/api';
 import { Avatar, Ribbon, participantIndex, useToast } from '../ui/components';
@@ -26,8 +27,8 @@ function displayName(p: Participant): string {
   return p.isYou ? 'You' : p.name;
 }
 
-export function ExpenseForm({ data, initial, saveLabel, onSave }: {
-  data: TripData; initial?: ExpenseFormValues; saveLabel: string;
+export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
+  data: TripData; initial?: ExpenseFormValues; initialId?: string; saveLabel: string;
   onSave: (v: ExpenseFormValues) => Promise<void>;
 }) {
   const { participants, you } = data;
@@ -70,6 +71,13 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
 
   const payer = participants.find(p => p.id === payerParticipantId);
   const payerLabel = payer ? displayName(payer) : 'Someone';
+
+  // Recent descriptions from this trip only — no new backend data, and the
+  // list is already in hand via `data`.
+  const suggestions = useMemo(
+    () => suggestDescriptions(data.expenses, descDraft, initialId),
+    [data.expenses, descDraft, initialId],
+  );
 
   const perHead = splitIds.length > 0 ? Math.floor(amountCents / splitIds.length) : 0;
   const peopleWord = splitIds.length === 1 ? 'person' : 'people';
@@ -184,6 +192,20 @@ export function ExpenseForm({ data, initial, saveLabel, onSave }: {
             font: 'inherit', width: '80%', boxSizing: 'border-box',
           }}
         />
+        {suggestions.length > 0 && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9, justifyContent: 'center',
+          }}>
+            {suggestions.map(s => (
+              // Sets the description only — amount, payer, split mode and
+              // included set are deliberately untouched.
+              <button key={s} className="chip" onClick={() => setDescDraft(s)} style={{
+                color: 'var(--ink-soft)', fontWeight: 500, maxWidth: '100%',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+              }}>{s}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>

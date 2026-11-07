@@ -3,12 +3,15 @@ import { test, expect } from '@playwright/test';
 // Full happy path against the live Supabase project (personal-scale, unguessable
 // slugs — acceptable per spec Testing #3). Runs local-only; not wired into CI.
 test('create → claim → expense → balances → all-in → settle → close', async ({ page }) => {
-  // Create (creator auto-claims the first name in the list)
+  // Create (the creator picks which name is theirs — no auto-claim, so Create
+  // stays disabled until a chip is tapped)
   // Note: no leading slash — with baseURL 'http://localhost:5173/grouptab/',
   // a leading-slash path replaces the whole pathname and drops '/grouptab'.
   await page.goto('new');
   await page.getByPlaceholder('Tahoe 2026').fill(`E2E ${Date.now()}`);
   await page.getByPlaceholder('You, Jake, Maya').fill('Erin, Sam');
+  await expect(page.getByRole('button', { name: 'Create & copy link' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Erin', exact: true }).click();
   await page.getByRole('button', { name: 'Create & copy link' }).click();
 
   // Add a $90 expense split equally between both

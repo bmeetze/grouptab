@@ -2,11 +2,13 @@ import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ensureSession } from '../data/session';
 import { createTrip } from '../data/api';
+import { copyLink, tripUrl } from '../lib/share';
 import { useToast } from '../ui/components';
 
 export default function CreateTrip() {
   const [tripName, setTripName] = useState('');
   const [namesRaw, setNamesRaw] = useState('');
+  const [youName, setYouName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
@@ -15,7 +17,13 @@ export default function CreateTrip() {
     () => [...new Set(namesRaw.split(',').map(n => n.trim()).filter(Boolean))],
     [namesRaw],
   );
-  const canCreate = tripName.trim().length > 0 && names.length >= 1 && !saving;
+  // Derived, not an effect: editing the names field can drop the name that was
+  // picked as "you", and reconciling during render avoids both a stale
+  // selection and the extra render an effect would cost.
+  const you = youName !== null && names.includes(youName) ? youName : null;
+  // No default selection. The failure this prevents is a creator who doesn't
+  // notice which name got claimed, so the pick has to be deliberate.
+  const canCreate = tripName.trim().length > 0 && you !== null && !saving;
 
   // Synchronous re-entrancy lock: setSaving(true) doesn't take effect until
   // the next render, so two rapid taps on "Create & copy link" would
@@ -23,16 +31,19 @@ export default function CreateTrip() {
   // two create_trip RPCs (duplicate trip).
   const savingRef = useRef(false);
   async function onCreate() {
-    if (savingRef.current) return;
+    if (savingRef.current || you === null) return;
     savingRef.current = true;
     setSaving(true);
     try {
       await ensureSession();
-      const { shareSlug } = await createTrip(tripName.trim(), names, names[0]); // first chip = you
-      const url = `${location.origin}/grouptab/t/${shareSlug}`;
-      let copied = false;
-      try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard can fail; link is shareable from the trip header */ }
-      toast(copied ? 'Link copied — paste it in the group chat' : 'Trip created — share it with the ↗ button');
+      const { shareSlug } = await createTrip(tripName.trim(), names, you);
+      // Clipboard, not the share sheet: navigator.share needs the click's user
+      // activation and the createTrip await above may have consumed it. The
+      // trip header's share button is one tap away and does open the sheet.
+      const copied = await copyLink(tripUrl(shareSlug));
+      toast(copied === 'copied'
+        ? 'Link copied — paste it in the group chat'
+        : 'Trip created — share it with the ↗ button');
       navigate(`/t/${shareSlug}`);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create trip');
@@ -45,7 +56,7 @@ export default function CreateTrip() {
   return (
     <div className="screen">
       <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <Link to="/" style={{ color: 'var(--ink)', textDecoration: 'none', fontSize: 20 }}>←</Link>
+        <Link to="/" aria-label="Back" style={{ display: 'inline-flex', alignItems: 'center', minWidth: 44, minHeight: 44, color: 'var(--ink)', textDecoration: 'none', fontSize: 20 }}>←</Link>
         <span style={{ fontSize: 16, fontWeight: 700 }}>New trip</span>
       </header>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>Name the trip.</h1>
@@ -60,14 +71,27 @@ export default function CreateTrip() {
         placeholder="You, Jake, Maya"
         style={{ width: '100%', minHeight: 48, borderRadius: 16, border: '1.5px solid var(--border-strong)',
                  padding: '0 14px', font: 'inherit', fontSize: 15, marginBottom: 12 }} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-        {names.map((n, i) => (
-          <span key={n} className="chip" style={i === 0
-            ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : undefined}>
-            {n}{i === 0 && ' · you ✓'}
-          </span>
-        ))}
-      </div>
+      {names.length > 0 && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 8 }}>
+            Which one is you?
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+            {names.map(n => {
+              const selected = n === you;
+              return (
+                <button key={n} className="chip" onClick={() => setYouName(n)}
+                  aria-pressed={selected}
+                  style={selected
+                    ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                    : undefined}>
+                  {n}{selected && ' · you ✓'}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
       <button className="btn btn-primary" disabled={!canCreate} onClick={() => void onCreate()}>
         Create &amp; copy link
       </button>
