@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchMyTrips } from '../data/api';
-import { computeBalances } from '../lib/money';
+import { approxTotalUsdCents, tripUsdBalances } from '../lib/fx';
 import { fmtCents, fmtSigned } from '../lib/format';
 import { Avatar, participantIndex } from '../ui/components';
 import type { Trip, TripData } from '../lib/types';
@@ -32,12 +32,7 @@ function loadCachedTrips(): CachedTripRow[] {
 
 function netFor(data: TripData): number {
   if (!data.you) return 0;
-  const balances = computeBalances(
-    data.participants.map(p => p.id),
-    data.expenses.map(e => ({ payerId: e.payerParticipantId, amountCents: e.amountCents, shares: e.shares })),
-    data.settlements.map(s => ({ fromId: s.fromParticipantId, toId: s.toParticipantId, amountCents: s.amountCents })),
-  );
-  return balances[data.you.id] ?? 0;
+  return tripUsdBalances(data)[data.you.id] ?? 0;
 }
 
 export default function Home() {
@@ -132,7 +127,7 @@ export default function Home() {
       {hero && (() => {
         const { trip, data } = hero;
         const net = netFor(data);
-        const totalSpend = data.expenses.reduce((s, e) => s + e.amountCents, 0);
+        const totalSpend = approxTotalUsdCents(data.expenses, data.rates);
         return (
           <div style={{
             background: 'var(--accent)', borderRadius: 24, padding: 20,

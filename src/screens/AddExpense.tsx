@@ -3,20 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import type { ScreenProps, TripData, Participant } from '../lib/types';
 import { computeEqualSplit } from '../lib/money';
 import {
-  applyKey, appendDigitOrDot, centsToAmountStr, formatAmountDisplay,
-  parseAmountStrToCents, sanitizeDecimalString,
+  applyKey, appendDigitOrDot, formatAmountDisplay, minorToAmountStr, nanosToRateString,
+  parseAmountStrToMinor, parseRateToNanos, sanitizeDecimalString,
 } from '../lib/amount';
+import { exponentOf, SUPPORTED_CURRENCIES } from '../lib/currency';
 import { suggestDescriptions } from '../lib/suggest';
-import { fmtCents } from '../lib/format';
+import { currencySymbol, fmtMoney } from '../lib/format';
 import { addExpense } from '../data/api';
+import { fetchUsdRate } from '../data/rates';
 import { Avatar, Ribbon, participantIndex, useToast } from '../ui/components';
 import { useOnline } from '../data/useOnline';
 
 export interface ExpenseFormValues {
   payerParticipantId: string;
   description: string;
-  amountCents: number;
-  shares: Record<string, number>;
+  currency: string;
+  amountMinor: number;                 // minor units of `currency`
+  shares: Record<string, number>;      // minor units of `currency`
+  usdNanos: number | null;             // only for the first expense in a currency
 }
 
 type SplitMode = 'equal' | 'custom';
@@ -39,7 +43,13 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   // TripGate guarantees data.you is set before this ever renders; the `?? ''`
   // is just to satisfy `Participant | null`'s type without an early return
   // ahead of the hooks below (react/rules-of-hooks).
-  const [amountStr, setAmountStr] = useState(initial ? centsToAmountStr(initial.amountCents) : '');
+  // Feature 01, decision 10: a new expense defaults to the currency of the
+  // trip's most recent expense (expenses arrive newest first); an edit keeps
+  // its own.
+  const [currency, setCurrency] = useState(initial?.currency ?? data.expenses[0]?.currency ?? 'USD');
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
+  const decimals = exponentOf(currency);
+  const [amountStr, setAmountStr] = useState(initial ? minorToAmountStr(initial.amountMinor, decimals) : '');
   const [descDraft, setDescDraft] = useState(initial?.description ?? '');
   const [payerParticipantId, setPayerParticipantId] = useState(initial?.payerParticipantId ?? you?.id ?? '');
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
@@ -59,15 +69,49 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   const [custom, setCustom] = useState<Record<string, string>>(() => {
     if (!initial) return {};
     const out: Record<string, string> = {};
-    for (const id of Object.keys(initial.shares)) out[id] = centsToAmountStr(initial.shares[id]);
+    for (const id of Object.keys(initial.shares)) out[id] = minorToAmountStr(initial.shares[id], decimals);
     return out;
   });
   const [saving, setSaving] = useState(false);
 
-  const amountCents = parseAmountStrToCents(amountStr);
-  const sumCustom = splitIds.reduce((sum, id) => sum + parseAmountStrToCents(custom[id] ?? ''), 0);
-  const splitValid = splitMode === 'equal' ? splitIds.length > 0 : (amountCents > 0 && sumCustom === amountCents);
-  const canSave = amountCents > 0 && descDraft.trim().length > 0 && splitValid && !saving;
+  // Feature 01, decision 6: the first expense in a currency carries the trip's
+  // rate for it, pre-filled from the rate source and editable. Once the trip
+  // has a rate, this row never shows again (Settle is where it changes).
+  const needsRate = currency !== 'USD' && !(currency in data.rates);
+  const [rateStr, setRateStr] = useState('');
+  const [rateStatus, setRateStatus] = useState<'idle' | 'loading' | 'fetched' | 'failed'>('idle');
+  const rateTouched = useRef(false);
+  useEffect(() => {
+    if (!needsRate) return;
+    let cancelled = false;
+    rateTouched.current = false;
+    setRateStr('');
+    setRateStatus('loading');
+    void fetchUsdRate(currency).then(nanos => {
+      if (cancelled || rateTouched.current) return;   // never overwrite what the user typed
+      if (nanos === null) { setRateStatus('failed'); return; }
+      setRateStr(nanosToRateString(nanos));
+      setRateStatus('fetched');
+    });
+    return () => { cancelled = true; };
+  }, [currency, needsRate]);
+  const rateNanos = needsRate ? parseRateToNanos(rateStr) : null;
+
+  const amountMinor = parseAmountStrToMinor(amountStr, decimals);
+  const sumCustom = splitIds.reduce((sum, id) => sum + parseAmountStrToMinor(custom[id] ?? '', decimals), 0);
+  const splitValid = splitMode === 'equal' ? splitIds.length > 0 : (amountMinor > 0 && sumCustom === amountMinor);
+  const rateValid = !needsRate || rateNanos !== null;
+  const canSave = amountMinor > 0 && descDraft.trim().length > 0 && splitValid && rateValid && !saving;
+  const money = (minor: number) => fmtMoney(minor, currency);
+
+  function chooseCurrency(next: string) {
+    const d = exponentOf(next);
+    setCurrency(next);
+    setCurrencyPickerOpen(false);
+    // Re-shape what's typed to the new currency's decimals (e.g. drop ".50" for JPY).
+    setAmountStr(a => sanitizeDecimalString(a, d));
+    setCustom(prev => Object.fromEntries(Object.entries(prev).map(([id, v]) => [id, sanitizeDecimalString(v, d)])));
+  }
 
   const payer = participants.find(p => p.id === payerParticipantId);
   const payerLabel = payer ? displayName(payer) : 'Someone';
@@ -79,16 +123,16 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
     [data.expenses, descDraft, initialId],
   );
 
-  const perHead = splitIds.length > 0 ? Math.floor(amountCents / splitIds.length) : 0;
+  const perHead = splitIds.length > 0 ? Math.floor(amountMinor / splitIds.length) : 0;
   const peopleWord = splitIds.length === 1 ? 'person' : 'people';
   const perHeadLabel = splitMode === 'custom'
     ? `${splitIds.length} ${peopleWord}`
-    : (amountCents > 0 ? `${fmtCents(perHead)} each` : `${splitIds.length} ${peopleWord}`);
+    : (amountMinor > 0 ? `${money(perHead)} each` : `${splitIds.length} ${peopleWord}`);
 
-  const customStatusLabel = amountCents <= 0
+  const customStatusLabel = amountMinor <= 0
     ? 'Enter the total first'
-    : (sumCustom === amountCents ? `adds up to ${fmtCents(amountCents)} ✓` : `${fmtCents(sumCustom)} of ${fmtCents(amountCents)} assigned`);
-  const customStatusColor = amountCents > 0 && sumCustom === amountCents ? 'var(--accent)' : 'var(--warn-fg)';
+    : (sumCustom === amountMinor ? `adds up to ${money(amountMinor)} ✓` : `${money(sumCustom)} of ${money(amountMinor)} assigned`);
+  const customStatusColor = amountMinor > 0 && sumCustom === amountMinor ? 'var(--accent)' : 'var(--warn-fg)';
 
   function toggleSplitId(id: string) {
     setSplitIds(prev => {
@@ -116,15 +160,18 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
     try {
       let shares: Record<string, number>;
       if (splitMode === 'equal') {
-        shares = computeEqualSplit(amountCents, splitIds, payerParticipantId);
+        shares = computeEqualSplit(amountMinor, splitIds, payerParticipantId);
       } else {
         shares = {};
         for (const id of splitIds) {
-          const c = parseAmountStrToCents(custom[id] ?? '');
+          const c = parseAmountStrToMinor(custom[id] ?? '', decimals);
           if (c > 0) shares[id] = c; // drop zero entries; RPC re-validates the sum
         }
       }
-      await onSave({ payerParticipantId, description: descDraft.trim(), amountCents, shares });
+      await onSave({
+        payerParticipantId, description: descDraft.trim(), currency, amountMinor, shares,
+        usdNanos: needsRate ? rateNanos : null,
+      });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not save');
     } finally {
@@ -139,9 +186,9 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   // Enter), but never when a focused activatable control (picker row, mode
   // chip, avatar toggle) should handle the key itself: hijacking Enter there
   // would fire a save with pre-activation state instead of activating it.
-  const latest = useRef({ canSave, handleSave });
+  const latest = useRef({ canSave, handleSave, decimals });
   useEffect(() => {
-    latest.current = { canSave, handleSave };
+    latest.current = { canSave, handleSave, decimals };
   });
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -158,7 +205,7 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         setAmountStr(a => a.slice(0, -1));
       } else if (e.key === '.' || (e.key >= '0' && e.key <= '9')) {
         e.preventDefault();
-        setAmountStr(a => appendDigitOrDot(a, e.key));
+        setAmountStr(a => appendDigitOrDot(a, e.key, latest.current.decimals));
       }
     }
     window.addEventListener('keydown', onKeyDown);
@@ -180,7 +227,52 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-1px' }}>{formatAmountDisplay(amountStr)}</div>
+        <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-1px' }}>
+          {formatAmountDisplay(amountStr, decimals, currencySymbol(currency))}
+        </div>
+        <button className="chip" onClick={() => setCurrencyPickerOpen(o => !o)}
+          aria-label={`Currency: ${currency}. Change currency`}
+          style={{ marginTop: 6, color: 'var(--accent)', fontWeight: 700 }}>
+          {currency} ▾
+        </button>
+        {currencyPickerOpen && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, justifyContent: 'center' }}>
+            {SUPPORTED_CURRENCIES.map(c => (
+              <button key={c} className="chip" onClick={() => chooseCurrency(c)} aria-pressed={c === currency}
+                style={c === currency
+                  ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                  : { color: 'var(--ink-soft)' }}>
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+        {needsRate && (
+          <div style={{
+            margin: '10px auto 0', width: '80%', background: 'var(--surface)', borderRadius: 14,
+            border: `1.5px solid ${rateNanos !== null ? 'var(--accent)' : 'var(--border-strong)'}`,
+            padding: '8px 12px', boxSizing: 'border-box', textAlign: 'left',
+          }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600, minHeight: 44 }}>
+              <span style={{ flex: 1 }}>1 {currency} = $</span>
+              <input
+                value={rateStr} inputMode="decimal" aria-label={`USD per ${currency}`}
+                placeholder={rateStatus === 'loading' ? '…' : '0.00'}
+                onChange={e => { rateTouched.current = true; setRateStr(e.target.value.replace(/[^0-9.]/g, '')); }}
+                style={{
+                  width: 110, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
+                  borderRadius: 10, padding: '0 10px', font: 'inherit', fontSize: 14, color: 'var(--ink)', boxSizing: 'border-box',
+                }}
+              />
+            </label>
+            <div style={{ fontSize: 11, color: rateStatus === 'failed' ? 'var(--warn-fg)' : 'var(--ink-faint)' }}>
+              {rateStatus === 'loading' && "Fetching today's rate…"}
+              {rateStatus === 'fetched' && "Today's ECB rate. Edit it if you like — the whole trip settles at this rate."}
+              {rateStatus === 'failed' && "Couldn't fetch a rate — type it in. The whole trip settles at this rate."}
+              {rateStatus === 'idle' && 'The whole trip settles at this rate.'}
+            </div>
+          </div>
+        )}
         <input
           value={descDraft}
           onChange={e => setDescDraft(e.target.value)}
@@ -267,11 +359,11 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={p.name} index={participantIndex(participants, p.id)} size={26} />
                     <span style={{ fontSize: 13, flex: 1 }}>{displayName(p)}</span>
-                    <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>$</span>
+                    <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{currencySymbol(currency)}</span>
                     <input
                       value={custom[p.id] ?? ''}
-                      onChange={e => setCustom(prev => ({ ...prev, [p.id]: sanitizeDecimalString(e.target.value) }))}
-                      placeholder="0.00" inputMode="decimal"
+                      onChange={e => setCustom(prev => ({ ...prev, [p.id]: sanitizeDecimalString(e.target.value, decimals) }))}
+                      placeholder={decimals === 0 ? '0' : '0.00'} inputMode={decimals === 0 ? 'numeric' : 'decimal'}
                       style={{
                         width: 84, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
                         borderRadius: 10, padding: '9px 10px', fontSize: 13.5, fontWeight: 600,
@@ -294,14 +386,18 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
       </div>
 
       <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridAutoRows: 52, gap: 9 }}>
-        {KEYPAD_KEYS.map(k => (
-          <button key={k} onClick={() => setAmountStr(a => applyKey(a, k))} style={{
-            background: 'var(--surface)', border: 'none', borderRadius: 16,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, fontWeight: 500, cursor: 'pointer', userSelect: 'none',
-            boxShadow: '0 1px 2px rgba(22,36,29,.04)', font: 'inherit', color: 'var(--ink)',
-          }}>{k}</button>
-        ))}
+        {KEYPAD_KEYS.map(k => {
+          const inert = k === '.' && decimals === 0;   // JPY, KRW, ISK have no minor unit
+          return (
+            <button key={k} onClick={() => setAmountStr(a => applyKey(a, k, decimals))} disabled={inert} style={{
+              background: 'var(--surface)', border: 'none', borderRadius: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, fontWeight: 500, cursor: inert ? 'default' : 'pointer', userSelect: 'none',
+              boxShadow: '0 1px 2px rgba(22,36,29,.04)', font: 'inherit',
+              color: inert ? 'var(--disabled)' : 'var(--ink)',
+            }}>{k}</button>
+          );
+        })}
       </div>
       <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--disabled)' }}>your keyboard works here too</div>
 
@@ -316,8 +412,9 @@ export default function AddExpense({ slug, data, refetch }: ScreenProps) {
 
   async function handleSave(v: ExpenseFormValues) {
     await addExpense({ tripId: data.trip.id, payerParticipantId: v.payerParticipantId,
-      description: v.description, amountCents: v.amountCents, shares: v.shares });
-    toast(`Added ${fmtCents(v.amountCents)}`);
+      description: v.description, currency: v.currency, amountMinor: v.amountMinor, shares: v.shares,
+      usdNanos: v.usdNanos });
+    toast(`Added ${fmtMoney(v.amountMinor, v.currency)}`);
     refetch();
     navigate(`/t/${slug}`);
   }

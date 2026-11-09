@@ -286,3 +286,77 @@ describe('settle-up loop', () => {
     expect(simplifyDebts(balances)).toEqual([{ fromId: 'a', toId: 'b', amountCents: 300 }]);
   });
 });
+
+// ---------- multi-currency (feature 01) ----------
+// The same invariants with expenses in up to three currencies, converted once
+// to USD by fx.ts. Amounts are reused from randomTrip as minor units of a
+// randomly chosen currency; rates span cheap (IDR-like) to dear (GBP-like).
+
+import { computeUsdBalances, type MultiCurrencyExpense, type Rates } from './fx';
+
+function randomMultiCurrencyTrip(rand: () => number): { ids: string[]; expenses: MultiCurrencyExpense[]; rates: Rates } {
+  const { ids, expenses } = randomTrip(rand);
+  const pool = ['USD', 'MXN', 'JPY', 'EUR', 'IDR'];
+  const rates: Rates = {
+    MXN: 50_000_000 + Math.floor(rand() * 20_000_000),
+    JPY: 5_000_000 + Math.floor(rand() * 3_000_000),
+    EUR: 1_000_000_000 + Math.floor(rand() * 200_000_000),
+    IDR: 50_000 + Math.floor(rand() * 20_000),
+  };
+  return {
+    ids, rates,
+    expenses: expenses.map(e => ({
+      payerId: e.payerId, amountMinor: e.amountCents, shares: e.shares,
+      currency: pool[Math.floor(rand() * pool.length)],
+    })),
+  };
+}
+
+describe('multi-currency invariants (500 randomized trips)', () => {
+  const trips = Array.from({ length: 500 }, (_, i) => randomMultiCurrencyTrip(prng(20_000 + i)));
+
+  it('USD balances are integer cents and always sum to exactly zero', () => {
+    for (const { ids, expenses, rates } of trips) {
+      const bal = computeUsdBalances(ids, expenses, [], rates);
+      expect(Object.values(bal).every(Number.isInteger)).toBe(true);
+      expect(sum(Object.values(bal))).toBe(0);
+    }
+  });
+
+  it('balances do not depend on the order expenses arrived in', () => {
+    for (const { ids, expenses, rates } of trips.slice(0, 100)) {
+      expect(computeUsdBalances(ids, [...expenses].reverse(), [], rates))
+        .toEqual(computeUsdBalances(ids, expenses, [], rates));
+    }
+  });
+
+  it('the settle-up loop still reaches all-zero in ≤ n-1 payments', () => {
+    for (const { ids, expenses, rates } of trips.slice(0, 300)) {
+      const settlements: SettlementInput[] = [];
+      let remaining = simplifyDebts(computeUsdBalances(ids, expenses, settlements, rates));
+      while (remaining.length > 0) {
+        const t = remaining[0];
+        settlements.push({ fromId: t.fromId, toId: t.toId, amountCents: t.amountCents });
+        remaining = simplifyDebts(computeUsdBalances(ids, expenses, settlements, rates));
+        expect(settlements.length).toBeLessThanOrEqual(ids.length);
+      }
+      expect(Object.values(computeUsdBalances(ids, expenses, settlements, rates)).every(v => v === 0)).toBe(true);
+      expect(settlements.length).toBeLessThanOrEqual(Math.max(0, ids.length - 1));
+    }
+  });
+
+  it('a rate change after some payments leaves a settleable true-up (decision 12)', () => {
+    for (const { ids, expenses, rates } of trips.slice(0, 200)) {
+      const settlements: SettlementInput[] = [];
+      const first = simplifyDebts(computeUsdBalances(ids, expenses, settlements, rates))[0];
+      if (!first) continue;
+      settlements.push({ fromId: first.fromId, toId: first.toId, amountCents: first.amountCents });
+
+      const moved: Rates = { ...rates, MXN: rates.MXN + 3_000_000, EUR: rates.EUR - 50_000_000 };
+      const after = computeUsdBalances(ids, expenses, settlements, moved);
+      expect(sum(Object.values(after))).toBe(0);        // the early payment is kept, not lost
+      const applied = applyTransfers(after, simplifyDebts(after));
+      expect(Object.values(applied).every(v => v === 0)).toBe(true);
+    }
+  });
+});

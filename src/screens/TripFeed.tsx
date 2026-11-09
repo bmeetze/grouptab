@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { computeBalances } from '../lib/money';
+import { approxTotalUsdCents, tripUsdBalances } from '../lib/fx';
 import { fmtCents } from '../lib/format';
 import { shareTrip, tripUrl } from '../lib/share';
-import { Avatar, Ribbon, TabBar, participantIndex, useToast } from '../ui/components';
+import { Avatar, ExpenseAmount, Ribbon, TabBar, participantIndex, useToast } from '../ui/components';
 import { OfflineBanner } from '../ui/OfflineBanner';
 import { useOnline } from '../data/useOnline';
 import type { ScreenProps } from '../lib/types';
@@ -22,16 +22,12 @@ export function timeAgo(iso: string): string {
 export default function TripFeed({ slug, data, stale }: ScreenProps) {
   const toast = useToast();
   const online = useOnline();
-  const { trip, participants, expenses, settlements, you } = data;
+  const { trip, participants, expenses, you } = data;
   const closed = trip.status === 'closed';
 
-  const balances = computeBalances(
-    participants.map(p => p.id),
-    expenses.map(e => ({ payerId: e.payerParticipantId, amountCents: e.amountCents, shares: e.shares })),
-    settlements.map(s => ({ fromId: s.fromParticipantId, toId: s.toParticipantId, amountCents: s.amountCents })),
-  );
+  const balances = tripUsdBalances(data);
   const bal = you ? (balances[you.id] ?? 0) : 0;
-  const totalSpend = expenses.reduce((s, e) => s + e.amountCents, 0);
+  const totalSpend = approxTotalUsdCents(expenses, data.rates);
   // Derived from data already fetched — a flag is not a second dispute state.
   const flagged = expenses.filter(e => e.flagged);
 
@@ -135,7 +131,9 @@ export default function TripFeed({ slug, data, stale }: ScreenProps) {
                     {payerName} · split {ways} ways · {timeAgo(e.createdAt)}
                   </div>
                 </div>
-                <div style={{ flex: 'none', fontSize: 15, fontWeight: 700 }}>{fmtCents(e.amountCents)}</div>
+                <div style={{ flex: 'none', display: 'flex', alignItems: 'flex-end' }}>
+                  <ExpenseAmount minor={e.amountMinor} currency={e.currency} rates={data.rates} />
+                </div>
               </Link>
             );
           })}

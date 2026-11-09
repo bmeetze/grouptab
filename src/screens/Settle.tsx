@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import type { Participant, ScreenProps, TripData } from '../lib/types';
-import { computeBalances, simplifyDebts } from '../lib/money';
+import { simplifyDebts } from '../lib/money';
+import { approxTotalUsdCents, missingRates, tripUsdBalances } from '../lib/fx';
+import { nanosToRateString, parseRateToNanos } from '../lib/amount';
 import { fmtCents, fmtSigned } from '../lib/format';
-import { setAllIn, markPaid, closeTrip } from '../data/api';
+import { setAllIn, markPaid, closeTrip, setRate } from '../data/api';
 import { tripToCsv } from '../lib/csv';
 import { Avatar, participantIndex, Ribbon, TabBar, useToast } from '../ui/components';
 import { OfflineBanner } from '../ui/OfflineBanner';
@@ -42,6 +44,10 @@ export default function Settle({ slug, data, refetch, stale }: ScreenProps) {
   const [payingKey, setPayingKey] = useState<string | null>(null);
   const closeBusyRef = useRef(false);
   const [closing, setClosing] = useState(false);
+  const rateBusyRef = useRef(false);
+  const [rateEditing, setRateEditing] = useState<string | null>(null);   // currency being edited
+  const [rateDraft, setRateDraft] = useState('');
+  const [rateSaving, setRateSaving] = useState(false);
 
   // TripGate only ever renders Settle once data.you is set (it redirects to
   // Join otherwise); this narrows the type for everything below. Hooks
@@ -49,18 +55,17 @@ export default function Settle({ slug, data, refetch, stale }: ScreenProps) {
   if (!data.you) return null;
   const you = data.you;
 
-  const ids = participants.map(p => p.id);
-  const balances = computeBalances(
-    ids,
-    expenses.map(e => ({ payerId: e.payerParticipantId, amountCents: e.amountCents, shares: e.shares })),
-    settlements.map(s => ({ fromId: s.fromParticipantId, toId: s.toParticipantId, amountCents: s.amountCents })),
-  );
+  const balances = tripUsdBalances(data);     // every foreign currency converted once (lib/fx.ts)
+  const foreignCurrencies = [...new Set(expenses.map(e => e.currency))].filter(c => c !== 'USD').sort();
+  const pendingRates = missingRates(
+    expenses.map(e => ({ payerId: e.payerParticipantId, currency: e.currency, amountMinor: e.amountMinor, shares: e.shares })),
+    data.rates);
   const transfers = simplifyDebts(balances); // computed on the fly — never stored
   const everyoneIn = participants.every(p => p.allExpensesIn);
   const allSquared = Object.values(balances).every(v => v === 0) && expenses.length > 0;
   const waiting = participants.filter(p => !p.allExpensesIn).map(p => p.name);
   const inCount = participants.length - waiting.length;
-  const totalSpend = expenses.reduce((s, e) => s + e.amountCents, 0);
+  const totalSpend = approxTotalUsdCents(expenses, data.rates);
   const maxAbs = Math.max(1, ...Object.values(balances).map(v => Math.abs(v)));
 
   // Both gated on !closed: a closed trip renders neither the toggle card nor
@@ -104,6 +109,28 @@ export default function Settle({ slug, data, refetch, stale }: ScreenProps) {
     } finally {
       payBusyRef.current = false;
       setPayingKey(null);
+    }
+  }
+
+  // Feature 01, decision 7: any member may change a rate while the trip is
+  // open; the server clears everyone's all-in on an actual change.
+  async function handleSaveRate(currency: string) {
+    if (closed || rateBusyRef.current) return;
+    if (!online) { toast(OFFLINE_MSG); return; }
+    const nanos = parseRateToNanos(rateDraft);
+    if (nanos === null) { toast('Enter a rate like 0.0586'); return; }
+    rateBusyRef.current = true;
+    setRateSaving(true);
+    try {
+      await setRate(trip.id, currency, nanos);
+      setRateEditing(null);
+      // Hold the lock until the recomputed balances land, as handleMarkPaid does.
+      await refetch();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not save rate');
+    } finally {
+      rateBusyRef.current = false;
+      setRateSaving(false);
     }
   }
 
@@ -234,6 +261,54 @@ export default function Settle({ slug, data, refetch, stale }: ScreenProps) {
               );
             })}
           </div>
+
+          {foreignCurrencies.length > 0 && (
+            <div className="card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="section-label">Exchange rates</div>
+              {foreignCurrencies.map(cur => {
+                const nanos = data.rates[cur];
+                const isEditing = rateEditing === cur;
+                return (
+                  <div key={cur} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
+                    <span style={{ fontSize: 13.5, flex: 1 }}>
+                      1 {cur} = {isEditing ? '$' : nanos === undefined ? 'rate pending' : `$${nanosToRateString(nanos)}`}
+                    </span>
+                    {isEditing ? (
+                      <>
+                        <input
+                          value={rateDraft} inputMode="decimal" autoFocus aria-label={`USD per ${cur}`}
+                          onChange={e => setRateDraft(e.target.value.replace(/[^0-9.]/g, ''))}
+                          onKeyDown={e => { if (e.key === 'Enter') void handleSaveRate(cur); }}
+                          style={{ width: 96, minHeight: 44, borderRadius: 12, border: '1.5px solid var(--accent)',
+                                   padding: '0 10px', font: 'inherit', fontSize: 14, boxSizing: 'border-box' }} />
+                        <button className="btn btn-primary" disabled={rateSaving}
+                          onClick={() => void handleSaveRate(cur)}
+                          style={{ width: 'auto', minHeight: 44, padding: '0 14px' }}>Save</button>
+                      </>
+                    ) : (
+                      !closed && (
+                        <button onClick={() => { setRateEditing(cur); setRateDraft(nanos === undefined ? '' : nanosToRateString(nanos)); }}
+                          style={{ minHeight: 44, minWidth: 44, border: 'none', background: 'transparent',
+                                   color: 'var(--accent)', fontWeight: 700, fontSize: 12.5, font: 'inherit', cursor: 'pointer' }}>
+                          edit
+                        </button>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+              {!closed && (
+                <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>
+                  Everyone settles at these rates. Changing one puts the transfers back to DRAFT.
+                </div>
+              )}
+              {pendingRates.length > 0 && (
+                <div style={{ fontSize: 11, color: 'var(--warn-fg)', fontWeight: 600 }}>
+                  Waiting for a {pendingRates.join(', ')} rate — those expenses aren't in the balances yet.
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 9 }}>
             Transfers

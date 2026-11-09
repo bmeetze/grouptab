@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { Participant } from '../lib/types';
+import type { Participant, TripRates } from '../lib/types';
+import { approxUsdCents } from '../lib/fx';
+import { fmtCents, fmtMoney } from '../lib/format';
 
 // Deterministic low-chroma pastel bg + darker fg pairs, by participant index
 // (handoff README §Design Tokens, avatar colors).
@@ -82,6 +84,24 @@ export function TabBar({ slug, active }: { slug: string; active: 'home' | 'expen
 
 // `tone` picks the token pair only — 'warn' is the amber used for flags and
 // owing, never red (see the design conventions in CLAUDE.md).
+// A stored expense amount in its own currency, with the ≈USD estimate beneath
+// for foreign currencies (feature 01, decision 11). The ≈ marks a display
+// estimate: it moves with the rate and can differ from balances by a cent.
+export function ExpenseAmount({ minor, currency, rates, size = 15 }:
+  { minor: number; currency: string; rates: TripRates; size?: number }) {
+  const usd = currency === 'USD' ? null : approxUsdCents(minor, currency, rates);
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'inherit' }}>
+      <span style={{ fontSize: size, fontWeight: 700 }}>{fmtMoney(minor, currency)}</span>
+      {currency !== 'USD' && (
+        <span style={{ fontSize: Math.max(11, Math.round(size * 0.4)), fontWeight: 500, color: 'var(--ink-soft)' }}>
+          {usd === null ? 'rate pending' : `≈ ${fmtCents(usd)}`}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function Ribbon({ children, tone = 'accent' }:
   { children: ReactNode; tone?: 'accent' | 'warn' }) {
   return (

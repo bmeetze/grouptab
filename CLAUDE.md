@@ -57,10 +57,13 @@ touched a user flow or screen.
 
 - `src/lib/money.ts` — the correctness core. Pure functions: `computeEqualSplit`,
   `computeBalances`, `simplifyDebts`. **Every displayed number derives from these**;
-  balances and transfers are computed on the fly, never stored.
+  balances and transfers are computed on the fly, never stored. `src/lib/fx.ts`
+  runs `computeBalances` per currency and converts to USD (`tripUsdBalances`).
 - `src/data/` — Supabase client, anonymous session, API wrappers (`api.ts`), and
   `useTripData` (fetch + realtime-refetch + localStorage offline cache). Realtime
-  model: subscribe to the trip's five tables, refetch the whole trip on any event.
+  model: subscribe to the trip's six tables, refetch the whole trip on any event.
+  `rates.ts` pre-fills exchange rates from Frankfurter (api.frankfurter.dev, ECB);
+  failure must only ever mean "type the rate".
 - `src/screens/` — one file per screen. `TripGate` resolves `/t/:slug/*`: no claim →
   Join; else nested routes (feed / add / e/:id / people / settle). Screens receive
   `ScreenProps { slug, data, refetch, stale }` (`refetch` returns a Promise —
@@ -82,9 +85,16 @@ access path. The owner must also be told when a change needs a dashboard toggle
 
 ## Invariants — do not break these
 
-- **Integer cents everywhere.** No floats in any money path. Equal-split leftover
-  cents go to the payer if in the split, else the first split participant. Balance =
-  paid − shares **+ settlements sent − received** (sending moves you toward zero).
+- **Integer minor units everywhere.** No floats in any money path. Expense amounts
+  are minor units of `expenses.currency` (exponents from `src/lib/currency.ts`, never
+  `Intl`); settlements, balances and transfers are USD cents. Conversion happens
+  **only** in `src/lib/fx.ts` (BigInt; per-person-per-currency, largest-remainder
+  rounding) — screens call `tripUsdBalances`. Equal-split leftover cents go to the
+  payer if in the split, else the first split participant. Balance = paid − shares
+  **+ settlements sent − received** (sending moves you toward zero).
+- **Rates are shared trip state.** One `trip_rates` row per foreign currency,
+  written only by `add_expense` (first use, never overwriting) and `set_rate` (which
+  clears everyone's all-in). No client write path to `trip_rates`.
 - **Writes to expenses/shares go through RPCs only** (`add_expense`,
   `update_expense`) — they validate shares-sum-equals-amount server-side. Direct
   inserts are RLS-denied by design. Direct table updates are column-scoped by

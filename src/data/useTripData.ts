@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { fetchTripData } from './api';
+import { fetchTripData, normalizeTripData } from './api';
 import type { TripData } from '../lib/types';
 
 const cacheKey = (slug: string) => `gt:trip:${slug}`;
@@ -19,7 +19,7 @@ export function useTripData(slug: string) {
     } catch (e) {
       try {
         const cached = localStorage.getItem(cacheKey(slug));
-        if (cached) { setData(JSON.parse(cached)); setStale(true); }
+        if (cached) { setData(normalizeTripData(JSON.parse(cached))); setStale(true); }
         else setError(e instanceof Error ? e.message : 'Failed to load trip');
       } catch {
         setError(e instanceof Error ? e.message : 'Failed to load trip');
@@ -37,7 +37,7 @@ export function useTripData(slug: string) {
     if (!data?.trip.id) return;
     const tripId = data.trip.id;
     const ch = supabase.channel(`trip:${tripId}`);
-    for (const table of ['expenses', 'participants', 'settlements', 'comments', 'trips']) {
+    for (const table of ['expenses', 'participants', 'settlements', 'comments', 'trips', 'trip_rates']) {
       ch.on('postgres_changes',
         { event: '*', schema: 'public', table, filter: table === 'trips' ? `id=eq.${tripId}` : `trip_id=eq.${tripId}` },
         () => void refetch());

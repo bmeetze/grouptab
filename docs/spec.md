@@ -2,7 +2,7 @@
 
 # GroupTab — Group Trip Expense Splitter — Spec
 
-**Status:** v1 shipped July 2026 (live at https://bmeetze.github.io/grouptab/); onboarding batch shipped November 2026
+**Status:** v1 shipped July 2026 (live at https://bmeetze.github.io/grouptab/); onboarding batch and multi-currency shipped November 2026
 **Originally consolidated:** 2026-07-09, after the design/prototyping phase
 
 ## Overview
@@ -22,7 +22,6 @@ A mobile-first web app for splitting expenses on group trips. Built because Spli
 
 - Receipt photos / OCR
 - Itemized bill splitting (assigning line items to people)
-- Multi-currency (USD only)
 - Payment processing or payment deep links (money moves via Venmo/Zelle outside the app)
 - Native mobile apps or push notifications
 - Offline write queue (reads cached; writes require connectivity)
@@ -43,7 +42,8 @@ Someone who has the link but not an open browser tab can also reach a trip throu
 The trip header's share control opens the **system share sheet** where the Web Share API is available and falls back to copy-to-clipboard elsewhere. Dismissing the sheet is silent, not an error. Trip creation stays on clipboard-only: `navigator.share` requires user activation, which the create round-trip can consume.
 
 ### Trip screen
-- Your net balance at top ("you're owed $84") and trip total spend
+- Your net balance at top ("you're owed $84") and trip total spend, both in USD
+- An expense in another currency shows its original amount with a USD estimate beneath ("MX$850.00" / "≈ $45.45"). The ≈ marks a display estimate: it moves with the trip rate and can differ from the balance math by a cent
 - Expense feed below, newest first, updating live as others log expenses
 - Flagged expenses carry a visible badge
 - When any expense is flagged, a banner above the feed shows the count and links straight to the flagged expense, so an unresolved dispute isn't buried in a long feed. Derived from the loaded expenses — a flag is not a second dispute state.
@@ -53,15 +53,17 @@ Readiness ("all in") status intentionally does **not** appear here — it lives 
 ### Add expense (the 3-tap path)
 One screen optimized for speed:
 - Amount keypad front and center (in-app keypad avoids the mobile keyboard sliding over the layout and iOS zoom-on-focus; physical keyboard also works on desktop — digits, backspace, Enter to save)
+- **Currency** chip under the amount opens a picker of 30 currencies (USD plus the European Central Bank list). A new expense defaults to the currency of the trip's most recent expense; a brand-new trip starts in USD. The keypad follows the currency's decimal places (JPY, KRW and ISK have none)
+- The **first expense in a currency** also asks for that currency's trip rate ("1 MXN = $___"), pre-filled with today's ECB rate from Frankfurter and editable; if the fetch fails, the logger types it. Later expenses in that currency don't ask again
 - **Description is required** — save is disabled until both amount and description are filled; the group needs to know what each expense was
 - Typing a description offers up to four matching descriptions already used on this trip as one-tap chips (recent first). Selecting one sets the description only — amount, payer and split are untouched. Trip-local, no new stored data.
 - Payer defaults to *you*; tapping **"Paid by"** opens a participant picker so an expense someone else paid can be logged on their behalf (decided 2026-07-09; not shown in the prototype — see Design Reference)
 - Split defaults to *everyone, equally*
 - Charging a subset: tap participant avatars to toggle them out
-- A switch flips to custom mode: per-person dollar inputs with a live "adds up ✓ / $x of $y assigned" validator; save is blocked until the amounts sum exactly to the total
+- A switch flips to custom mode: per-person amount inputs (in the expense's currency) with a live "adds up ✓ / $x of $y assigned" validator; save is blocked until the amounts sum exactly to the total
 
 ### Expense detail
-- Split breakdown (who owes what on this expense)
+- Split breakdown (who owes what on this expense), in the expense's own currency, with the ≈USD estimate under a foreign total
 - Comment thread for context ("this was the boat deposit")
 - Flag button — anyone can flag an expense for review, and the flag shows who raised it ("⚑ Flagged by Maya"); anyone can resolve the flag
 - Edit / delete (confirmation prompt on delete; edited expenses show an "edited" marker)
@@ -78,7 +80,9 @@ Data model: `all_expenses_in` boolean on `participants`.
 ### Settle up
 The Settle tab:
 - Each person's net position shown as a small horizontal bar chart diverging from a center zero line (summary only — the actionable unit is the transfer list below)
-- Minimized transfer list from debt simplification ("Jake pays Brandon $142"), each with a "mark paid" button
+- Minimized transfer list from debt simplification ("Jake pays Brandon $142"), each with a "mark paid" button. Balances and transfers are always in USD
+- **Exchange rates** card (when the trip has foreign expenses): one shared rate per currency for the whole trip. Any member can edit a rate while the trip is open; an actual change clears **everyone's** all-in, so transfers return to DRAFT and the group re-confirms (re-saving the same rate changes nothing)
+- Settlements are fixed USD amounts whenever recorded. If a rate changes after someone paid, the remaining transfers recompute and any true-up shows as a new transfer
 - "Mark paid" records a settlement and updates balances; paid transfers move to a payment-history list
 - When all balances are zero, balances collapse to an "All squared up" summary and the trip can be closed; closed trips are read-only
 
@@ -86,7 +90,7 @@ The Settle tab:
 Three-tab persistent bar on trip screens: **Home | Expenses | Settle up**. Home lists all trips this device has claimed a name in, with the active trip as a hero card carrying the user's net balance and a quick-add button. A People screen (from the trip header) handles claim status and releasing claims.
 
 ### Export
-Any participant can download the trip's expenses and settlements as a CSV file. This doubles as the backup story, since the Supabase free tier has no automatic backups.
+Any participant can download the trip's expenses and settlements as a CSV file: amounts in each row's own currency with currency and USD-estimate columns, followed by the trip's exchange rates. This doubles as the backup story, since the Supabase free tier has no automatic backups.
 
 ## Architecture
 
@@ -104,23 +108,25 @@ Any participant can download the trip's expenses and settlements as a CSV file. 
 
 ## Data Model
 
-Six tables:
+Seven tables:
 
 | Table | Purpose | Key fields |
 |-------|---------|-----------|
 | `trips` | One per trip | name, share_slug (unguessable), status (active/closed), creator_participant_id |
 | `participants` | People in a trip | trip_id, name, claimed_by (anonymous auth uid, nullable), all_expenses_in (boolean, reset when that participant logs a new expense) |
-| `expenses` | Logged spending | trip_id, payer_participant_id, description, amount_cents, flagged, flagged_by_participant_id (nullable), created/updated timestamps |
-| `expense_shares` | One row per person per expense | expense_id, participant_id, amount_cents |
+| `expenses` | Logged spending | trip_id, payer_participant_id, description, currency (ISO 4217, default USD), amount_cents (minor units of `currency`), flagged, flagged_by_participant_id (nullable), created/updated timestamps |
+| `expense_shares` | One row per person per expense | expense_id, participant_id, amount_cents (minor units of the expense's currency) |
 | `comments` | Context on expenses | expense_id, participant_id, body, created_at |
-| `settlements` | Recorded payments | trip_id, from_participant_id, to_participant_id, amount_cents |
+| `settlements` | Recorded payments | trip_id, from_participant_id, to_participant_id, amount_cents (always USD) |
+| `trip_rates` | One shared rate per foreign currency per trip | trip_id, currency, usd_nanos_per_unit (integer billionths of a USD per one unit), set_by_participant_id, set_at. Written only by `add_expense` (first use) and `set_rate` |
 
 ## Money Rules
 
-- All amounts stored as **integer cents**. No floats anywhere in money math.
+- All amounts stored as **integer minor units** of their currency (cents for USD, yen for JPY; decimal places come from a fixed ISO 4217 table, never the browser). No floats anywhere in money math. Settlements, balances and transfers are USD cents.
 - `expense_shares` stores **computed amounts even for equal splits** — a $100 three-way split is permanently recorded as 3334/3333/3333 cents. No rounding ambiguity later.
 - Leftover cents on uneven division go to the **payer** if the payer is in the split; otherwise to the first split participant (deterministic order).
 - Custom splits must sum exactly to the expense total (validated on save).
+- **Conversion happens once, at the balance step, never at entry.** Balances are computed per currency in minor units; each person's balance in each foreign currency is converted to USD with integer math at the trip rate, floored to the cent, and the cents still needed for the group to sum to exactly $0.00 go to the largest remainders (ties: participant order). USD-only trips skip conversion entirely.
 - Balance per person = total paid − total shares **+ settlements sent − settlements received** (sending a payment moves your balance toward zero — this is how "mark paid" clears debts; matches the prototype's `balances()`).
 - The minimized transfer list is computed on the fly with a standard greedy debt-simplification algorithm — never stored, so it is always consistent with the underlying data.
 
