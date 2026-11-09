@@ -1,6 +1,6 @@
 # 01 — Multi-currency
 
-**Status:** Planned — plan approved 2026-11-07: [plans/01-multi-currency.md](../plans/01-multi-currency.md).
+**Status:** Shipped 2026-11-09 — behavior now in [spec.md](../spec.md). Plan: [plans/01-multi-currency.md](../plans/01-multi-currency.md).
 **Roadmap:** #1 (R3 · I5 · C4 · E3 · score 20.0) — see [roadmap.md](../roadmap.md)
 **Started:** 2026-11-07
 

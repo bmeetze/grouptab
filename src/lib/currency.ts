@@ -1,9 +1,10 @@
 // Supported currencies and their ISO 4217 minor-unit exponents (feature 01,
 // decision 8).
 //
-// The list is the rate source's (Frankfurter / ECB reference rates) plus USD.
-// Re-check it against the live API before shipping: the ECB retires currencies
-// (BGN on Bulgaria's euro adoption, RUB in 2022).
+// The list is the rate source's (Frankfurter / ECB reference rates) plus USD,
+// checked against https://api.frankfurter.dev/v1/currencies on 2026-11-09.
+// The ECB retires currencies (BGN on Bulgaria's euro adoption, RUB in 2022);
+// a retired code here only loses its rate pre-fill — typing still works.
 //
 // Exponents are HARDCODED rather than read from Intl: stored amounts are minor
 // units, so every device must agree on what "850" means. Browsers' Intl data
