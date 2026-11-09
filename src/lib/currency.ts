@@ -21,11 +21,9 @@ const EXPONENTS: Record<string, number> = {
   TRY: 2, ZAR: 2,
 };
 
-/** USD first, then alphabetical — the order the currency picker shows. */
-export const SUPPORTED_CURRENCIES: string[] = [
-  SETTLEMENT_CURRENCY,
-  ...Object.keys(EXPONENTS).filter(c => c !== SETTLEMENT_CURRENCY).sort(),
-];
+/** Alphabetical by code — the order the currency dropdown shows (owner's
+ *  call after user testing, 2026-11-09). */
+export const SUPPORTED_CURRENCIES: string[] = Object.keys(EXPONENTS).sort();
 
 export function isSupported(code: string): boolean {
   return Object.hasOwn(EXPONENTS, code);

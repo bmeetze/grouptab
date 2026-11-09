@@ -8,7 +8,7 @@ import {
 } from '../lib/amount';
 import { exponentOf, SUPPORTED_CURRENCIES } from '../lib/currency';
 import { suggestDescriptions } from '../lib/suggest';
-import { currencySymbol, fmtMoney } from '../lib/format';
+import { currencyName, currencySymbol, fmtMoney } from '../lib/format';
 import { addExpense } from '../data/api';
 import { fetchUsdRate } from '../data/rates';
 import { Avatar, Ribbon, participantIndex, useToast } from '../ui/components';
@@ -47,7 +47,6 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   // trip's most recent expense (expenses arrive newest first); an edit keeps
   // its own.
   const [currency, setCurrency] = useState(initial?.currency ?? data.expenses[0]?.currency ?? 'USD');
-  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const decimals = exponentOf(currency);
   const [amountStr, setAmountStr] = useState(initial ? minorToAmountStr(initial.amountMinor, decimals) : '');
   const [descDraft, setDescDraft] = useState(initial?.description ?? '');
@@ -107,7 +106,6 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   function chooseCurrency(next: string) {
     const d = exponentOf(next);
     setCurrency(next);
-    setCurrencyPickerOpen(false);
     // Re-shape what's typed to the new currency's decimals (e.g. drop ".50" for JPY).
     setAmountStr(a => sanitizeDecimalString(a, d));
     setCustom(prev => Object.fromEntries(Object.entries(prev).map(([id, v]) => [id, sanitizeDecimalString(v, d)])));
@@ -198,7 +196,7 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         if (latest.current.canSave) { e.preventDefault(); void latest.current.handleSave(); }
         return;
       }
-      const isTypingField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      const isTypingField = !!target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
       if (isTypingField) return;
       if (e.key === 'Backspace') {
         e.preventDefault();
@@ -230,23 +228,19 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-1px' }}>
           {formatAmountDisplay(amountStr, decimals, currencySymbol(currency))}
         </div>
-        <button className="chip" onClick={() => setCurrencyPickerOpen(o => !o)}
-          aria-label={`Currency: ${currency}. Change currency`}
-          style={{ marginTop: 6, color: 'var(--accent)', fontWeight: 700 }}>
-          {currency} ▾
-        </button>
-        {currencyPickerOpen && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, justifyContent: 'center' }}>
-            {SUPPORTED_CURRENCIES.map(c => (
-              <button key={c} className="chip" onClick={() => chooseCurrency(c)} aria-pressed={c === currency}
-                style={c === currency
-                  ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-                  : { color: 'var(--ink-soft)' }}>
-                {c}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Native dropdown: the platform picker on phones, type-ahead on desktop.
+            An expense in a code outside the list (older data) still shows it. */}
+        <select
+          value={currency} onChange={e => chooseCurrency(e.target.value)} aria-label="Currency"
+          style={{
+            marginTop: 8, minHeight: 44, maxWidth: '80%', borderRadius: 14, padding: '0 12px',
+            border: '1.5px solid var(--border-strong)', background: 'var(--surface)',
+            color: 'var(--accent)', font: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}>
+          {[...new Set([...SUPPORTED_CURRENCIES, currency])].sort().map(c => (
+            <option key={c} value={c}>{c} — {currencyName(c)}</option>
+          ))}
+        </select>
         {needsRate && (
           <div style={{
             margin: '10px auto 0', width: '80%', background: 'var(--surface)', borderRadius: 14,

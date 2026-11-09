@@ -12,8 +12,7 @@ test('log pesos with a pre-filled rate, see ≈USD, settle in USD, change the ra
 
   // First MXN expense: the rate row appears, pre-filled from the (mocked) API.
   await page.getByRole('link', { name: '+', exact: true }).click();
-  await page.getByRole('button', { name: /Change currency/ }).click();
-  await page.getByRole('button', { name: 'MXN', exact: true }).click();
+  await page.getByLabel('Currency').selectOption('MXN');
   await expect(page.getByLabel('USD per MXN')).toHaveValue('0.0586');
   await typeAmount(page, '900');
   await page.getByPlaceholder('What for? (required)').fill('Tacos');
@@ -28,7 +27,7 @@ test('log pesos with a pre-filled rate, see ≈USD, settle in USD, change the ra
 
   // The next expense defaults to MXN and doesn't ask for a rate again.
   await page.getByRole('link', { name: '+', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Currency: MXN/ })).toBeVisible();
+  await expect(page.getByLabel('Currency')).toHaveValue('MXN');
   await expect(page.getByLabel('USD per MXN')).toHaveCount(0);
   await page.getByRole('button', { name: 'Close' }).click();
 
@@ -54,8 +53,7 @@ test('a zero-decimal currency takes whole units only', async ({ page }) => {
   }));
   await createTrip(page);
   await page.getByRole('link', { name: '+', exact: true }).click();
-  await page.getByRole('button', { name: /Change currency/ }).click();
-  await page.getByRole('button', { name: 'JPY', exact: true }).click();
+  await page.getByLabel('Currency').selectOption('JPY');
   await expect(page.getByRole('button', { name: '.', exact: true })).toBeDisabled();
   await typeAmount(page, '1200');
   await expect(page.getByText('¥1200')).toBeVisible();

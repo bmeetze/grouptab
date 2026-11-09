@@ -74,6 +74,11 @@ owner accepted the recommendation for 8, 9, 12).
     as a new transfer — the same thing that happens today when an expense is added
     after a mid-trip payment.
 
+13. **The currency control is a dropdown sorted alphabetically** (owner, 2026-11-09,
+    after user testing). The shipped chip-and-grid picker read poorly; a native
+    dropdown uses the platform's own picker and lists every currency A–Z with its
+    name, USD in its alphabetical place.
+
 ## Open questions
 
 None. (Closed 2026-11-07 — see decisions 6–12.)

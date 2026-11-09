@@ -12,8 +12,10 @@ const EUR = 1_080_000_000;     // 1 EUR = $1.08
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
 
 describe('currency table', () => {
-  it('lists USD first and only currencies with a known exponent', () => {
-    expect(SUPPORTED_CURRENCIES[0]).toBe('USD');
+  it('lists every currency alphabetically, USD included, each with a known exponent', () => {
+    expect(SUPPORTED_CURRENCIES).toEqual([...SUPPORTED_CURRENCIES].sort());
+    expect(SUPPORTED_CURRENCIES).toContain('USD');
+    expect(SUPPORTED_CURRENCIES).toHaveLength(30);
     expect(SUPPORTED_CURRENCIES).toContain('MXN');
     for (const c of SUPPORTED_CURRENCIES) expect(isSupported(c)).toBe(true);
   });

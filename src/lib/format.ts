@@ -29,6 +29,22 @@ export function currencySymbol(currency: string): string {
   return sym;
 }
 
+const names = new Map<string, string>();
+/** English name for the dropdown ("Mexican Peso"); the code itself if the
+ *  browser has no name for it. */
+export function currencyName(currency: string): string {
+  let name = names.get(currency);
+  if (name === undefined) {
+    try {
+      name = new Intl.DisplayNames(['en'], { type: 'currency' }).of(currency) ?? currency;
+    } catch {
+      name = currency;
+    }
+    names.set(currency, name);
+  }
+  return name;
+}
+
 /** Minor units of `currency` for display: fmtMoney(85000, 'MXN') -> "MX$850.00",
  *  fmtMoney(1200, 'JPY') -> "¥1,200". fmtMoney(c, 'USD') === fmtCents(c). */
 export function fmtMoney(minor: number, currency: string): string {

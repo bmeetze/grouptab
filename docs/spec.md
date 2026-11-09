@@ -53,7 +53,7 @@ Readiness ("all in") status intentionally does **not** appear here — it lives 
 ### Add expense (the 3-tap path)
 One screen optimized for speed:
 - Amount keypad front and center (in-app keypad avoids the mobile keyboard sliding over the layout and iOS zoom-on-focus; physical keyboard also works on desktop — digits, backspace, Enter to save)
-- **Currency** chip under the amount opens a picker of 30 currencies (USD plus the European Central Bank list). A new expense defaults to the currency of the trip's most recent expense; a brand-new trip starts in USD. The keypad follows the currency's decimal places (JPY, KRW and ISK have none)
+- **Currency** dropdown under the amount: 30 currencies (USD plus the European Central Bank list), sorted alphabetically by code and labelled with their names ("MXN — Mexican Peso"). A new expense defaults to the currency of the trip's most recent expense; a brand-new trip starts in USD. The keypad follows the currency's decimal places (JPY, KRW and ISK have none)
 - The **first expense in a currency** also asks for that currency's trip rate ("1 MXN = $___"), pre-filled with today's ECB rate from Frankfurter and editable; if the fetch fails, the logger types it. Later expenses in that currency don't ask again
 - **Description is required** — save is disabled until both amount and description are filled; the group needs to know what each expense was
 - Typing a description offers up to four matching descriptions already used on this trip as one-tap chips (recent first). Selecting one sets the description only — amount, payer and split are untouched. Trip-local, no new stored data.
