@@ -40,5 +40,5 @@ test('a closed trip offers no write affordance on any screen', async ({ page }) 
   await page.goto(`t/${slug}/add`);
   await expect(page.getByText('Trip closed · read-only')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save expense' })).toHaveCount(0);
-  await expect(page.getByPlaceholder('What for? (required)')).toHaveCount(0);
+  await expect(page.getByLabel('What for')).toHaveCount(0);
 });

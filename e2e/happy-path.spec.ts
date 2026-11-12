@@ -17,8 +17,10 @@ test('create → claim → expense → balances → all-in → settle → close'
   // Add a $90 expense split equally between both
   await expect(page.getByText("you're even")).toBeVisible();
   await page.getByRole('link', { name: '+', exact: true }).click();
-  for (const key of ['9', '0']) await page.getByRole('button', { name: key, exact: true }).click();
-  await page.getByPlaceholder('What for? (required)').fill('Boat deposit');
+  // The amount field is focused on arrival — typing goes straight into it.
+  await expect(page.getByLabel('Amount', { exact: true })).toBeFocused();
+  await page.keyboard.type('90');
+  await page.getByLabel('What for').fill('Boat deposit');
   await page.getByRole('button', { name: 'Save expense' }).click();
 
   // Feed + balance: Erin paid 90, owes 45 → owed 45

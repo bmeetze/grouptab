@@ -78,3 +78,24 @@ body {
   font-family: inherit;
 }
 .chip::after { content: ''; position: absolute; inset: -9px -4px; }
+
+/* Text-entry fields (Add expense). One look for every typed value, so the
+   amount and the description read as the same kind of thing. Inputs inside
+   stay ≥16px: anything smaller makes iOS zoom the page on focus. */
+.field {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--surface); border: 1.5px solid var(--border-strong);
+  border-radius: 16px; padding: 0 14px; min-height: 52px;
+}
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.field input {
+  flex: 1; min-width: 0; width: 100%; align-self: stretch;
+  background: none; border: none; outline: none; padding: 0;
+  font: inherit; font-size: 16px; font-weight: 600; color: var(--ink);
+}
+.field input::placeholder { color: var(--disabled); font-weight: 500; }
+.field-amount { min-height: 68px; cursor: text; }
+.field-amount input, .field-amount .field-symbol { font-size: 34px; font-weight: 700; letter-spacing: -1px; }
+.field-amount input::placeholder { font-weight: 700; }
+.field-amount .field-symbol { color: var(--ink-faint); }
+.field-amount .field-symbol.filled { color: var(--ink); }

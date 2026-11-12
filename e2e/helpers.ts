@@ -22,20 +22,20 @@ export async function createTrip(page: Page, names = 'Erin, Sam'): Promise<strin
   return slug!;
 }
 
-/** Taps the in-app keypad, one character at a time ('90', '12.50', …). */
+/** Types into the amount field one key at a time, as a keyboard would ('90', '12.50', …). */
 export async function typeAmount(page: Page, amount: string): Promise<void> {
-  for (const key of amount) await page.getByRole('button', { name: key, exact: true }).click();
+  await page.getByLabel('Amount', { exact: true }).pressSequentially(amount);
 }
 
-export async function clearAmount(page: Page, presses: number): Promise<void> {
-  for (let i = 0; i < presses; i++) await page.getByRole('button', { name: '⌫', exact: true }).click();
+export async function clearAmount(page: Page): Promise<void> {
+  await page.getByLabel('Amount', { exact: true }).fill('');
 }
 
 /** Equal-split expense from the trip feed, leaving the browser back on the feed. */
 export async function addEqualExpense(page: Page, amount: string, description: string): Promise<void> {
   await page.getByRole('link', { name: '+', exact: true }).click();
   await typeAmount(page, amount);
-  await page.getByPlaceholder('What for? (required)').fill(description);
+  await page.getByLabel('What for').fill(description);
   await page.getByRole('button', { name: 'Save expense' }).click();
   await expect(page.getByText(description)).toBeVisible();
 }
