@@ -1,4 +1,4 @@
-> **Repo mirror** of the design handoff README. Path translations for this repo: `GroupTab Prototype.dc.html` → [prototype.html](prototype.html) (open it in a browser and click through every flow); the product spec → [spec.md](spec.md); `GroupTab Wireframes.dc.html` (exploration history, context only) lives only in the owner's workspace. Where this document and the spec disagree, **the spec wins** — known deliberate difference: the payer picker on Add expense is in the spec but not the prototype.
+> **Repo mirror** of the design handoff README. Path translations for this repo: `GroupTab Prototype.dc.html` → [prototype.html](prototype.html) (open it in a browser and click through every flow); the product spec → [spec.md](spec.md); `GroupTab Wireframes.dc.html` (exploration history, context only) lives only in the owner's workspace. Where this document and the spec disagree, **the spec wins** — known deliberate differences, both on Add expense: the payer picker is in the spec but not the prototype, and the prototype's on-screen keypad was replaced by labelled fields and the system keyboard (see §5).
 
 # Handoff: GroupTab — Group Trip Expense Splitter
 
@@ -75,7 +75,7 @@ Spacing & shape: screen padding 20–24px; card padding 12–16px; gap between c
 - Tab bar (persistent on Trip and Settle): **⌂ Home | Expenses | Settle up** — active tab accent/700, inactive `ink-faint`.
 - Live updates: new expenses from others appear within ~1s (Supabase Realtime).
 
-### 5. Add expense (the 3-tap path)
+### 5. Add expense (amount → what for → save)
 - ✕ closes. **Spec change not in the prototype (2026-11-12):** the prototype's on-screen keypad is gone; the form is two labelled fields and the system keyboard. Layout top to bottom: Amount, What for, split card, Save.
 - Fields share one look (`.field` in tokens.css): surface bg, 1.5px `--border-strong`, radius 16, min-height 52; focused = `--accent` border + 3px `--accent-tint` ring. Each sits under an 11/600 uppercase section label ("AMOUNT", "WHAT FOR"). Input text is never below 16px (iOS zooms otherwise).
 - **Amount field**: min-height 68, 34/700 with letter-spacing −1. Currency symbol prefix (`--ink-faint` until something is typed), placeholder `0.00` in `--disabled`, currency chip ("USD ▾", accent text) at the right edge inside the field. Focused on arrival for a new expense; not on edit.

@@ -50,7 +50,7 @@ describe('parseAmountStrToCents', () => {
 });
 
 describe('amount field entry (nextAmountStr)', () => {
-  it('builds the common 3-tap amount', () => {
+  it('builds a typed amount', () => {
     expect(parseAmountStrToCents(type('90'))).toBe(9000);
     expect(parseAmountStrToCents(type('4835'))).toBe(483500);
   });

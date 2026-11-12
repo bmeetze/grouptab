@@ -21,7 +21,8 @@ Docs follow one rule: **each fact lives in exactly one file.**
   reviewed before code. Each is linked from its feature doc.
 - [docs/design-handoff.md](docs/design-handoff.md) — the Trailhead visual system:
   exact tokens, per-screen layouts and copy. [docs/prototype.html](docs/prototype.html)
-  is the interactive pixel reference (open in a browser).
+  is the interactive pixel reference (open in a browser) — except Add expense, where
+  it still shows the retired on-screen keypad; follow the handoff's §5 there.
 - [docs/evals.md](docs/evals.md) — the standing correctness suite: what each tier
   asserts, when to run it, and where a new eval belongs.
 
