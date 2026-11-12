@@ -133,7 +133,7 @@ export default function Home() {
             background: 'var(--accent)', borderRadius: 24, padding: 20,
             display: 'flex', flexDirection: 'column', gap: 10, color: '#fff',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1.2px', color: '#a8d4c2' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1.2px', color: 'var(--on-accent-soft)' }}>
               HAPPENING NOW
             </div>
             <Link to={`/t/${trip.shareSlug}`} style={{
@@ -147,7 +147,7 @@ export default function Home() {
               {data.participants.map(p => (
                 <Avatar key={p.id} name={p.name} index={participantIndex(data.participants, p.id)} size={26} />
               ))}
-              <span style={{ fontSize: 12.5, color: '#a8d4c2', marginLeft: 4 }}>
+              <span style={{ fontSize: 12.5, color: 'var(--on-accent-soft)', marginLeft: 4 }}>
                 {fmtCents(totalSpend)} spent
               </span>
             </div>

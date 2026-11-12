@@ -90,6 +90,8 @@ encodes a bug found during the build:
   service-role key is ever committed.
 - **Design system** — colors come from `tokens.css` (the known raw-hex
   exceptions are listed in the check itself); owing is amber, never red;
+  every text token is at least 4.5:1 against the surfaces it sits on,
+  computed from the token values;
   `.app-scroll` stays unpositioned so the absolute overlays resolve to `#root`.
 - **The harness itself** — the npm scripts exist, CI runs the gate before it
   builds, Playwright specs stay out of the vitest run, and a sanity check

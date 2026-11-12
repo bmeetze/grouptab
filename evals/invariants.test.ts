@@ -364,8 +364,6 @@ describe('invariant: the Trailhead design system', () => {
       '#9a5a3a', '#d0e0ec', '#3a5a78', '#e8e3c8', '#6f6a2f', '#dcd2e0', '#6a4a6f',
       '#cfe3da', '#2f6a55',
     ],
-    // Muted label on the dark hero card; predates the token set.
-    'src/screens/Home.tsx': ['#a8d4c2'],
   };
 
   it('colors come from tokens.css, not literals', () => {
@@ -384,8 +382,41 @@ describe('invariant: the Trailhead design system', () => {
   });
 
   it('owing is amber, never red', () => {
-    expect(read('src/ui/tokens.css')).toMatch(/--negative:\s*#b4653a/);
+    expect(read('src/ui/tokens.css')).toMatch(/--negative:\s*#a25b34/);
     expect(hits(appFiles, /['"](red|crimson|#f00|#ff0000)['"]/i)).toEqual([]);
+  });
+
+  it('text tokens meet 4.5:1 contrast on the surfaces they sit on', () => {
+    // WCAG relative luminance, straight from the token hex values. Small text
+    // needs 4.5:1; this is the regression test for the 2026-11-12 colour fix
+    // (faint text was 2.8:1, owing amber 3.98:1).
+    const css = read('src/ui/tokens.css');
+    const token = (name: string) => {
+      const m = css.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+      expect(m, `--${name} missing from tokens.css`).toBeTruthy();
+      return m![1];
+    };
+    const lum = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const pairs: [string, string][] = [
+      ['ink', 'bg'], ['ink', 'surface'], ['ink-soft', 'bg'], ['ink-soft', 'surface'],
+      ['ink-faint', 'bg'], ['ink-faint', 'surface'],
+      ['accent', 'bg'], ['accent', 'surface'], ['accent', 'accent-tint'],
+      ['negative', 'bg'], ['negative', 'surface'],
+      ['warn-fg', 'warn-bg'], ['on-accent-soft', 'accent'], ['surface', 'accent'],
+    ];
+    const failures = pairs
+      .map(([fg, bg]) => ({ fg, bg, r: ratio(token(fg), token(bg)) }))
+      .filter(p => p.r < 4.5)
+      .map(p => `--${p.fg} on --${p.bg}: ${p.r.toFixed(2)}`);
+    expect(failures).toEqual([]);
   });
 
   it('.app-scroll stays unpositioned so overlays resolve to #root', () => {
