@@ -28,17 +28,20 @@ Typography — `Instrument Sans` (Google Fonts), weights 400/500/600/700. System
 | bg | `#f4f6f4` | App background |
 | surface | `#ffffff` | Cards, inputs, tab bar |
 | ink | `#16241d` | Primary text |
-| ink-soft | `#5c6d64` | Secondary text |
-| ink-faint | `#8a978e` | Tertiary/hints |
+| ink-soft | `#4e5d55` | Secondary text |
+| ink-faint | `#68716b` | Tertiary/hints |
 | disabled | `#b9c2bb` | Disabled buttons/icons |
 | border | `#e2e8e3` | Hairlines |
 | border-strong | `#d3dcd6` | Input borders, chips |
 | accent | `#1f6f54` | Primary actions, positive balances, active tab |
 | accent-tint | `#e3efe9` | Success ribbons/badges |
-| negative | `#b4653a` | Owing amounts, destructive text (never pure red) |
+| negative | `#a25b34` | Owing amounts, destructive text (never pure red) |
 | negative-bar | `#c98a4b` | Negative balance bars |
-| warn | `#a06b1f` on `#f4e8d0` | Flag badges, draft badge, conflict banners |
+| warn | `#8b5d1b` on `#f4e8d0` | Flag badges, draft badge, conflict banners |
+| on-accent-soft | `#cdebdf` | Muted labels on the accent hero card |
 | dark | `#16241d` | Toasts, offline banner |
+
+Every text token is ≥4.5:1 on the surfaces it sits on (enforced by `evals/invariants.test.ts`). The 2026-11-12 contrast fix darkened ink-soft, ink-faint, negative and warn and lightened on-accent-soft; the prototype still shows the older values.
 
 Avatar colors (initial circles): Brandon `#c7ddd2`/`#1f6f54`, Jake `#e6d9c5`/`#8a6a3b`, Maya `#d9cfe8`/`#5b4a78`. Generate similar low-chroma pastel bg + darker fg pairs per participant (deterministic by index).
 
@@ -50,8 +53,8 @@ Spacing & shape: screen padding 20–24px; card padding 12–16px; gap between c
 
 ### 1. Home
 - App title "GroupTab" (20/700).
-- **Active trip hero card**: accent-green bg `#1f6f54`, radius 24, white text. Contains: label "HAPPENING NOW" (11/600, ls 1.2, `#a8d4c2`), trip name (18/700, navigates to trip), your net balance (34/700, signed: `+$84.00`), avatar row + "$X spent" (`#a8d4c2`), and a white quick-add button "+ Add expense" (accent text, radius 16) that deep-links to Add.
-- "OTHER TRIPS" section: white rows with trip name + your net (negative in `#b4653a`); closed trips at 55% opacity with 🔒 and "settled".
+- **Active trip hero card**: accent-green bg `#1f6f54`, radius 24, white text. Contains: label "HAPPENING NOW" (11/600, ls 1.2, `#cdebdf`), trip name (18/700, navigates to trip), your net balance (34/700, signed: `+$84.00`), avatar row + "$X spent" (`#cdebdf`), and a white quick-add button "+ Add expense" (accent text, radius 16) that deep-links to Add.
+- "OTHER TRIPS" section: white rows with trip name + your net (negative in `#a25b34`); closed trips at 55% opacity with 🔒 and "settled".
 - Dashed-border "+ New trip" button.
 - Only trips this device has claimed a name in appear here.
 
@@ -69,7 +72,7 @@ Spacing & shape: screen padding 20–24px; card padding 12–16px; gap between c
 
 ### 4. Trip (expense feed)
 - Header: ← (home), trip name, 👥 chip (People screen), "share ↗" chip (copies link, toast "Link copied — …").
-- Net balance (34/700): positive `#1f6f54` "you're owed", negative `#b4653a` "you owe", zero grey "you're even". Sub-line: "· $X trip total".
+- Net balance (34/700): positive `#1f6f54` "you're owed", negative `#a25b34` "you owe", zero grey "you're even". Sub-line: "· $X trip total".
 - Feed: newest first, white cards — payer avatar, title (one line, **truncate with ellipsis, never wrap**), meta "Payer · split · when" (also truncated), amount right-aligned 15/700. Flagged expenses show a compact `⚑` amber chip after the title (icon only, no word).
 - FAB: 56px accent circle "+", bottom-right, overlapping tab bar.
 - Tab bar (persistent on Trip and Settle): **⌂ Home | Expenses | Settle up** — active tab accent/700, inactive `ink-faint`.
@@ -92,11 +95,11 @@ Spacing & shape: screen padding 20–24px; card padding 12–16px; gap between c
 - Flag: if flagged, amber banner "⚑ Flagged by X" with a **Resolve** button (anyone can resolve); if not, a quiet outline button "⚑ Flag for review".
 - Split card: "SPLIT · EVERYONE" label, one row per person with exact cents (e.g. $133.34 / $133.33 / $133.33) and hint "leftover cents go to the payer".
 - Comments: white bubbles "**Name** — text" (author name colored), input + accent send circle.
-- Delete: quiet `#b4653a` text link → inline confirm card ("Delete this expense?" Cancel / solid Delete). Deleting returns to feed.
+- Delete: quiet `#a25b34` text link → inline confirm card ("Delete this expense?" Cancel / solid Delete). Deleting returns to feed.
 
 ### 7. People (claim management)
 - Reached via 👥 in the trip header. One row per participant: avatar, name ("(you)" suffix), status "claimed ✓" (accent) or "unclaimed" (grey).
-- **Release my claim** (outline, `#b4653a`) on your own row → releases and drops you to the Join screen to re-claim.
+- **Release my claim** (outline, `#a25b34`) on your own row → releases and drops you to the Join screen to re-claim.
 - The **trip creator** additionally gets "Release" on everyone's rows (lost phone / wrong pick). Hint: "Anyone can release their own name; the trip creator can release anyone's."
 
 ### 8. Settle up — the lifecycle

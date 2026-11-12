@@ -1,8 +1,8 @@
 # Implementation plan — design consistency pass
 
-**Status:** proposed, not started. Owner approved the direction on 2026-11-12.
-**Scope:** Phase 1 below. Phase 2 is listed so the seams are visible, but it is
-**gated** — each item needs the owner's answer before it is built.
+**Status:** approved 2026-11-12, not started. The contrast fix (part of step 1)
+already shipped with this plan. **Scope:** Phase 1, then Phase 2 as a separate
+PR. The owner delegated the Phase 2 decisions; they are recorded below.
 
 ## Problem
 
@@ -18,8 +18,10 @@ buttons, headers and type through inline styles (224 `style={{…}}` blocks acro
   render differently per platform. Only the Home tab has an icon.
 - 20 distinct inline font sizes (9 … 34, including 12, 12.5, 13, 13.5, 14, 14.5).
 - `tokens.css` has zero `:active`, `:focus-visible` or `transition` rules.
-- Contrast: `--ink-faint` on `--bg` is 2.80:1 and on `--surface` 3.04:1; the
-  disabled primary button label (`#fff` on `--disabled`) is 1.83:1.
+- Contrast: the disabled primary button label (`#fff` on `--disabled`) is
+  1.83:1. (Text-token contrast was fixed with this plan — see step 1.)
+- The lighter weight on "Mark paid" and friends is a bug: each sets `fontWeight`
+  and then `font: 'inherit'` after it, which resets the weight.
 
 ## The one rule for Phase 1
 
@@ -33,8 +35,8 @@ Guardrails, all enforced by `evals/invariants.test.ts` or CLAUDE.md:
   unchanged. The lock invariant matches source text per screen; moving a handler
   into a shared component breaks it.
 - Closed-trip two-layer guards stay (hide the affordance **and** guard the handler).
-- `.app-scroll` stays unpositioned. `max-width: 430px` stays. `--negative` stays
-  `#b4653a` (pinned by an invariant; see "Not in scope").
+- `.app-scroll` stays unpositioned. `max-width: 430px` stays. Colour token
+  values stay as they are now; the contrast invariant must keep passing.
 - Every interactive element keeps a ≥44px hit area on both axes.
 - Hex literals live only in `src/ui/tokens.css`. Never widen `HEX_EXCEPTIONS`.
 
@@ -60,18 +62,14 @@ In `src/ui/tokens.css` `:root`:
   `--text-xl: 22px`, `--text-2xl: 28px` (page headings), `--text-hero: 34px`
   (money headline), and `--text-input: 16px` (every `<input>`; below 16px iOS
   zooms on focus).
-- **Contrast.** Darken `--ink-faint` until it is ≥4.5:1 on both `--bg` and
-  `--surface`, keeping it visibly lighter than `--ink-soft` (5.05:1 on `--bg`).
-  Add `--disabled-fg` and restyle disabled primary buttons as `--border`
-  background with `--disabled-fg` text at ≥3:1, instead of white on grey.
-- **Hero-card label.** Add `--on-accent-soft: #a8d4c2`, use it in `Home.tsx`, and
-  **delete** the `Home.tsx` entry from `HEX_EXCEPTIONS` (narrowing is the goal).
+- **Contrast — text tokens already done.** `--ink-soft`, `--ink-faint`,
+  `--negative` and `--warn-fg` were darkened and `--on-accent-soft` added (Home's
+  hero label uses it; its `HEX_EXCEPTIONS` entry is gone). An invariant now
+  asserts ≥4.5:1 for every text-token pair. Do not re-tune these.
+- **Disabled button — still to do.** Add `--disabled-fg` and restyle disabled
+  primary buttons as `--border` background with `--disabled-fg` text at ≥3:1,
+  instead of white on grey. Add the pair to the contrast invariant at 3:1.
 - **Motion.** `--ease: 120ms ease-out`.
-
-Add an eval to the design-system block of `evals/invariants.test.ts` that parses
-the token hex values and asserts: `--ink`, `--ink-soft`, `--ink-faint` ≥4.5:1 on
-`--bg` and `--surface`; `#fff` on `--accent` ≥4.5:1. This is the regression test
-for the contrast fix.
 
 ### Step 2 — Icons
 
@@ -165,7 +163,7 @@ Add an invariant: no `fontSize: <number literal>` in `src/screens` or `src/ui`.
 - `CLAUDE.md` Conventions: buttons via `Button` variants, icons from
   `src/ui/icons.tsx` (never glyphs or emoji), sizes via `--text-*`, new buttons
   need no bespoke state CSS. Mirror into `AGENTS.md` if it carries the same text.
-- `docs/evals.md`: describe the three new invariants (contrast, glyphs, font sizes).
+- `docs/evals.md`: describe the design invariants (contrast, glyphs, font sizes).
 
 ## Definition of done
 
@@ -173,8 +171,9 @@ Add an invariant: no `fontSize: <number literal>` in `src/screens` or `src/ui`.
   In a cloud session the pinned Playwright cannot find its browser: run through
   a temporary config that sets
   `launchOptions.executablePath: '/opt/pw-browsers/chromium'`, and do not commit it.
-- New invariants pass: token contrast, no glyph icons, no literal font sizes.
-- `HEX_EXCEPTIONS` is smaller than before, not larger.
+- Invariants pass: token contrast (existing, extended for the disabled pair), no
+  glyph icons, no literal font sizes.
+- `HEX_EXCEPTIONS` has not grown.
 - Before/after sheet of the nine states attached to the PR. Check each "after"
   for: one header style, one button weight, icons on all three tabs, a visible
   focus ring when tabbing on desktop, nothing clipped at 320px width.
@@ -194,22 +193,75 @@ Add an invariant: no `fontSize: <number literal>` in `src/screens` or `src/ui`.
 
 ## Not in scope
 
-- `--negative` (#b4653a) is 3.98:1 on `--bg`, below 4.5:1 for small text. It is
-  pinned by an invariant and is a brand decision. Raise it with the owner; do not
-  change it here.
 - `docs/prototype.html` is not updated. The handoff doc is the reference.
 - Dark mode, loading skeletons, list motion.
 
-## Phase 2 — gated, needs the owner's answer per item
+## Phase 2 — what screens say (separate PR, after Phase 1 merges)
 
-Do not build these from this plan. Each changes what a screen says, so each
-needs a decision, a spec delta, and (for money text) unit tests.
+These change behaviour, so the PR also merges a spec delta into `docs/spec.md`
+for each item, updates the handoff doc, and extends the flow evals. Decisions
+were made on the owner's behalf on 2026-11-12; the reasoning is the record.
 
-| Item | Proposed default | Question for the owner |
+### 2a — Feed rows show your part
+
+Under the total on each feed row, one line, in the expense's own currency:
+
+| Situation | Line | Colour |
 | --- | --- | --- |
-| Feed rows show your part | Right column: total; under it "you lent $60.00" / "your share $30.00" / "not in this one" | Wording, and whether the ≈USD estimate still fits in the row |
-| Date group headings in the feed | "Today", "Yesterday", then dates | Group by logged date (only date stored today) — acceptable until roadmap #12? |
-| One balance headline | Label above, signed number: "YOU'RE OWED" / "+$100.32", on feed and Home | Signed everywhere, or words only? |
-| Empty states | New trip: "Share the link" and "Add the first expense" as two actions | Copy |
-| Dashed outline means "add" only | Settle's unavailable Close trip becomes a muted line of text | Keep it visible at all before everyone is at $0? |
-| Create trip: name chips | Add names one at a time; tap a chip to mark "you" | Worth losing comma-paste speed? (Could keep both) |
+| You paid | `you lent {amount − your share}` | `--accent` |
+| Someone else paid, you are in the split | `your share {your share}` | `--ink-soft` |
+| You paid and it nets to zero (only you in the split) | `just you` | `--ink-faint` |
+| Neither paid nor in the split | `not in this one` | `--ink-faint` |
+
+- "Your share" is deliberately not amber: amber means a net debt, and one row is
+  not a net position.
+- Derive from stored `shares` and `amountMinor` only — integer minor units, no
+  new rounding. Put it in a pure helper in `src/lib/` with unit tests for all
+  four rows, including a payer who is not in the split (lent = full amount).
+- A foreign-currency row keeps its existing ≈USD estimate under the total; the
+  new line sits in the row's meta line instead, replacing "split N ways".
+
+### 2b — Date headings in the feed
+
+Group rows under `Today`, `Yesterday`, then `Sat, Nov 7` (device locale and time
+zone), newest group first. Group by the logged timestamp: it is the only date
+stored, and roadmap #12 (incurred date) will change the key later. Headings use
+`.section-label`. Rows drop the relative time when a heading already says it,
+except under Today, where "2h ago" still helps.
+
+### 2c — One balance headline
+
+Feed and Home hero both read: label above, signed number below.
+`you're owed` / `+$100.32` (accent), `you owe` / `−$31.00` (negative),
+`you're even` / `$0.00` (`--ink-faint`). The trip total moves to its own line
+under the number. Keep the label text lower-case in the DOM and upper-case it in
+CSS: the flow evals wait on `getByText("you're even")` and `"you're owed"`, and
+`createTrip` in `e2e/helpers.ts` depends on the first.
+
+### 2d — Empty states
+
+- **Empty trip feed:** heading "Start the tab", one line "Send the link so
+  everyone can claim their name, then log the first expense.", and two buttons:
+  "Share the link" (secondary; calls the existing share handler) and "Add the
+  first expense" (primary; same route as the FAB). Hidden on closed trips.
+- **Empty Home:** keep the copy and both buttons; move the block from the
+  vertical centre to the upper third so it does not float. No illustration.
+
+### 2e — Dashed outline means "add" only
+
+Settle's unavailable Close trip becomes a centred line of `--ink-faint` text —
+"Close trip unlocks when everyone's at $0" — with no box. It stays visible
+because it tells the group what the end of the trip looks like. The enabled
+state is a normal secondary button.
+
+### Decided against — Create trip name chips
+
+Not building. The comma field is the fastest way to enter a group, it accepts a
+pasted list, and the screen already turns names into chips for the "which one
+is you?" pick. Entering names one at a time would cost speed for no new clarity.
+
+### Phase 2 definition of done
+
+Same gates as Phase 1, plus: spec deltas merged, unit tests for 2a, and flow-eval
+assertions for 2a (one row of each kind that the existing specs already create),
+2b (a `Today` heading), 2d (the two empty-trip buttons) and 2e.
