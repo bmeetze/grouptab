@@ -50,10 +50,12 @@ The trip header's share control opens the **system share sheet** where the Web S
 
 Readiness ("all in") status intentionally does **not** appear here — it lives on the Settle tab only, where the decision it informs actually happens (decided 2026-07-09, keeps the feed clean).
 
-### Add expense (the 3-tap path)
+### Add expense (amount → what for → save)
 One screen optimized for speed:
-- Amount keypad front and center (in-app keypad avoids the mobile keyboard sliding over the layout and iOS zoom-on-focus; physical keyboard also works on desktop — digits, backspace, Enter to save)
-- **Currency** chip under the amount opens a picker of 30 currencies (USD plus the European Central Bank list). A new expense defaults to the currency of the trip's most recent expense; a brand-new trip starts in USD. The keypad follows the currency's decimal places (JPY, KRW and ISK have none)
+- **One input method: the system keyboard.** The form reads top to bottom — Amount, What for, who paid and the split, Save — and every typed value is an ordinary field. The amount field comes first and is focused on arrival, so the decimal keyboard is already up; the description uses the text keyboard. (Decided 2026-11-12, replacing the in-app keypad: two input methods on one screen was confusing, the keypad took most of the screen, and nothing said the amount came first. The keypad's original reasons are handled differently — fields are ≥16px so iOS doesn't zoom on focus, and Save sits in the flow under the split card, not pinned to the bottom, so the keyboard doesn't cover it.)
+- The amount field accepts digits and one decimal separator (a comma is read as a point), up to 7 digits, with the currency's decimal places. Enter in the amount field moves to the description; Enter anywhere saves once the form is valid
+- While Save is disabled, a line under it says what's missing ("Enter an amount to start", "Add what it was for")
+- **Currency** chip inside the amount field opens a picker of 30 currencies (USD plus the European Central Bank list). A new expense defaults to the currency of the trip's most recent expense; a brand-new trip starts in USD. The amount field follows the currency's decimal places (JPY, KRW and ISK have none)
 - The **first expense in a currency** also asks for that currency's trip rate ("1 MXN = $___"), pre-filled with today's ECB rate from Frankfurter and editable; if the fetch fails, the logger types it. Later expenses in that currency don't ask again
 - **Description is required** — save is disabled until both amount and description are filled; the group needs to know what each expense was
 - Typing a description offers up to four matching descriptions already used on this trip as one-tap chips (recent first). Selecting one sets the description only — amount, payer and split are untouched. Trip-local, no new stored data.
@@ -150,7 +152,7 @@ Focused on the correctness core, per the simplest-and-cheapest constraint:
 
 ## Design Reference
 
-The UI is fully specified in the design handoff ([design-handoff.md](design-handoff.md), with the interactive prototype at [prototype.html](prototype.html)): Trailhead visual system (Instrument Sans, pine green `#1f6f54` on off-white `#f4f6f4`, amber — never red — for owing), an interactive hi-fi prototype covering every screen and state, and a README with exact tokens, layouts, and behaviors. One deliberate addition in this spec is not shown in the prototype: the **payer picker** on the Add expense screen ("Paid by" opens a participant list). Where this spec and the prototype disagree, this spec wins.
+The UI is fully specified in the design handoff ([design-handoff.md](design-handoff.md), with the interactive prototype at [prototype.html](prototype.html)): Trailhead visual system (Instrument Sans, pine green `#1f6f54` on off-white `#f4f6f4`, amber — never red — for owing), an interactive hi-fi prototype covering every screen and state, and a README with exact tokens, layouts, and behaviors. Two deliberate differences on the Add expense screen are not shown in the prototype: the **payer picker** ("Paid by" opens a participant list), and **amount entry** — the prototype's on-screen keypad was replaced by labelled fields and the system keyboard (2026-11-12). Where this spec and the prototype disagree, this spec wins.
 
 ## Future work
 

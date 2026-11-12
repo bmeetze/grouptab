@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ScreenProps, TripData, Participant } from '../lib/types';
 import { computeEqualSplit } from '../lib/money';
 import {
-  applyKey, appendDigitOrDot, formatAmountDisplay, minorToAmountStr, nanosToRateString,
+  minorToAmountStr, nanosToRateString, nextAmountStr,
   parseAmountStrToMinor, parseRateToNanos, sanitizeDecimalString,
 } from '../lib/amount';
 import { exponentOf, SUPPORTED_CURRENCIES } from '../lib/currency';
@@ -24,8 +24,6 @@ export interface ExpenseFormValues {
 }
 
 type SplitMode = 'equal' | 'custom';
-
-const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
 
 function displayName(p: Participant): string {
   return p.isYou ? 'You' : p.name;
@@ -104,10 +102,21 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
   const canSave = amountMinor > 0 && descDraft.trim().length > 0 && splitValid && rateValid && !saving;
   const money = (minor: number) => fmtMoney(minor, currency);
 
+  // What still stands between the user and Save, in the order the form reads.
+  // Shown under the disabled button so it never just sits there grey.
+  const saveBlocker = amountMinor <= 0 ? 'Enter an amount to start'
+    : !descDraft.trim() ? 'Add what it was for'
+    : !rateValid ? `Enter the ${currency} rate`
+    : null;   // a custom split that doesn't add up has its own validator line
+
+  const amountRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLInputElement>(null);
+
   function chooseCurrency(next: string) {
     const d = exponentOf(next);
     setCurrency(next);
     setCurrencyPickerOpen(false);
+    amountRef.current?.focus();   // inside the tap, so the keyboard comes back
     // Re-shape what's typed to the new currency's decimals (e.g. drop ".50" for JPY).
     setAmountStr(a => sanitizeDecimalString(a, d));
     setCustom(prev => Object.fromEntries(Object.entries(prev).map(([id, v]) => [id, sanitizeDecimalString(v, d)])));
@@ -180,32 +189,24 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
     }
   }
 
-  // Physical keyboard: digits/'.' feed the same amount-string builder as the
-  // on-screen keys; Backspace trims it; Enter saves when valid — including
-  // from inside the description/custom text inputs (inputs don't consume
-  // Enter), but never when a focused activatable control (picker row, mode
-  // chip, avatar toggle) should handle the key itself: hijacking Enter there
-  // would fire a save with pre-activation state instead of activating it.
-  const latest = useRef({ canSave, handleSave, decimals });
+  // Enter saves when the form is valid — from any field — but never when a
+  // focused activatable control (picker row, mode chip, avatar toggle) should
+  // handle the key itself: hijacking Enter there would fire a save with
+  // pre-activation state instead of activating it. From the amount field with
+  // the form still incomplete, Enter moves on to the description.
+  const latest = useRef({ canSave, handleSave, amountMinor });
   useEffect(() => {
-    latest.current = { canSave, handleSave, decimals };
+    latest.current = { canSave, handleSave, amountMinor };
   });
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Enter') return;
       const target = e.target as HTMLElement | null;
-      if (e.key === 'Enter') {
-        if (target?.closest('button, a, select, textarea')) return; // native activation wins
-        if (latest.current.canSave) { e.preventDefault(); void latest.current.handleSave(); }
-        return;
-      }
-      const isTypingField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
-      if (isTypingField) return;
-      if (e.key === 'Backspace') {
+      if (target?.closest('button, a, select, textarea')) return; // native activation wins
+      if (latest.current.canSave) { e.preventDefault(); void latest.current.handleSave(); return; }
+      if (target === amountRef.current && latest.current.amountMinor > 0) {
         e.preventDefault();
-        setAmountStr(a => a.slice(0, -1));
-      } else if (e.key === '.' || (e.key >= '0' && e.key <= '9')) {
-        e.preventDefault();
-        setAmountStr(a => appendDigitOrDot(a, e.key, latest.current.decimals));
+        descRef.current?.focus();
       }
     }
     window.addEventListener('keydown', onKeyDown);
@@ -226,17 +227,27 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         <span style={{ width: 20 }} />
       </div>
 
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-1px' }}>
-          {formatAmountDisplay(amountStr, decimals, currencySymbol(currency))}
+      {/* One input method for the whole form: real fields, system keyboard.
+          The amount is first, focused on arrival, and reads as a field. */}
+      <div>
+        <div className="section-label" style={{ marginBottom: 6 }}>Amount</div>
+        <div className="field field-amount" onClick={e => { if (e.target === e.currentTarget) amountRef.current?.focus(); }}>
+          <span className={`field-symbol${amountStr ? ' filled' : ''}`} aria-hidden="true"
+            onClick={() => amountRef.current?.focus()}>{currencySymbol(currency)}</span>
+          <input
+            ref={amountRef} value={amountStr} aria-label="Amount" autoFocus={!initial}
+            onChange={e => setAmountStr(prev => nextAmountStr(prev, e.target.value, decimals))}
+            inputMode={decimals === 0 ? 'numeric' : 'decimal'} enterKeyHint="next" autoComplete="off"
+            placeholder={decimals === 0 ? '0' : `0.${'0'.repeat(decimals)}`}
+          />
+          <button className="chip" onClick={() => setCurrencyPickerOpen(o => !o)}
+            aria-label={`Currency: ${currency}. Change currency`} aria-expanded={currencyPickerOpen}
+            style={{ flex: 'none', color: 'var(--accent)', fontWeight: 700 }}>
+            {currency} ▾
+          </button>
         </div>
-        <button className="chip" onClick={() => setCurrencyPickerOpen(o => !o)}
-          aria-label={`Currency: ${currency}. Change currency`}
-          style={{ marginTop: 6, color: 'var(--accent)', fontWeight: 700 }}>
-          {currency} ▾
-        </button>
         {currencyPickerOpen && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
             {SUPPORTED_CURRENCIES.map(c => (
               <button key={c} className="chip" onClick={() => chooseCurrency(c)} aria-pressed={c === currency}
                 style={c === currency
@@ -249,7 +260,7 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         )}
         {needsRate && (
           <div style={{
-            margin: '10px auto 0', width: '80%', background: 'var(--surface)', borderRadius: 14,
+            marginTop: 10, background: 'var(--surface)', borderRadius: 14,
             border: `1.5px solid ${rateNanos !== null ? 'var(--accent)' : 'var(--border-strong)'}`,
             padding: '8px 12px', boxSizing: 'border-box', textAlign: 'left',
           }}>
@@ -261,7 +272,7 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
                 onChange={e => { rateTouched.current = true; setRateStr(e.target.value.replace(/[^0-9.]/g, '')); }}
                 style={{
                   width: 110, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
-                  borderRadius: 10, padding: '0 10px', font: 'inherit', fontSize: 14, color: 'var(--ink)', boxSizing: 'border-box',
+                  borderRadius: 10, padding: '0 10px', font: 'inherit', fontSize: 16, color: 'var(--ink)', boxSizing: 'border-box',
                 }}
               />
             </label>
@@ -273,20 +284,21 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
             </div>
           </div>
         )}
-        <input
-          value={descDraft}
-          onChange={e => setDescDraft(e.target.value)}
-          placeholder="What for? (required)"
-          style={{
-            fontSize: 15, fontWeight: 600, color: 'var(--ink)', background: 'var(--surface)',
-            border: `1.5px solid ${descDraft.trim() ? 'var(--accent)' : 'var(--border-strong)'}`,
-            borderRadius: 14, padding: '11px 18px', marginTop: 10, textAlign: 'center',
-            font: 'inherit', width: '80%', boxSizing: 'border-box',
-          }}
-        />
+      </div>
+
+      <div>
+        <label htmlFor="expense-desc" className="section-label" style={{ display: 'block', marginBottom: 6 }}>What for</label>
+        <div className="field">
+          <input
+            id="expense-desc" ref={descRef} value={descDraft}
+            onChange={e => setDescDraft(e.target.value)}
+            placeholder="Dinner, gas, groceries…" enterKeyHint="done"
+            autoComplete="off" autoCapitalize="sentences" maxLength={120}
+          />
+        </div>
         {suggestions.length > 0 && (
           <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9, justifyContent: 'center',
+            display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9,
           }}>
             {suggestions.map(s => (
               // Sets the description only — amount, payer, split mode and
@@ -361,13 +373,13 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
                     <span style={{ fontSize: 13, flex: 1 }}>{displayName(p)}</span>
                     <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{currencySymbol(currency)}</span>
                     <input
-                      value={custom[p.id] ?? ''}
+                      value={custom[p.id] ?? ''} aria-label={`${p.name}'s share`}
                       onChange={e => setCustom(prev => ({ ...prev, [p.id]: sanitizeDecimalString(e.target.value, decimals) }))}
                       placeholder={decimals === 0 ? '0' : '0.00'} inputMode={decimals === 0 ? 'numeric' : 'decimal'}
                       style={{
-                        width: 84, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
-                        borderRadius: 10, padding: '9px 10px', fontSize: 13.5, fontWeight: 600,
-                        font: 'inherit', color: 'var(--ink)', boxSizing: 'border-box',
+                        width: 96, minHeight: 44, textAlign: 'right', background: 'var(--bg)', border: '1px solid var(--border)',
+                        borderRadius: 10, padding: '9px 10px', font: 'inherit', fontSize: 16, fontWeight: 600,
+                        color: 'var(--ink)', boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -385,23 +397,14 @@ export function ExpenseForm({ data, initial, initialId, saveLabel, onSave }: {
         )}
       </div>
 
-      <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridAutoRows: 52, gap: 9 }}>
-        {KEYPAD_KEYS.map(k => {
-          const inert = k === '.' && decimals === 0;   // JPY, KRW, ISK have no minor unit
-          return (
-            <button key={k} onClick={() => setAmountStr(a => applyKey(a, k, decimals))} disabled={inert} style={{
-              background: 'var(--surface)', border: 'none', borderRadius: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 500, cursor: inert ? 'default' : 'pointer', userSelect: 'none',
-              boxShadow: '0 1px 2px rgba(22,36,29,.04)', font: 'inherit',
-              color: inert ? 'var(--disabled)' : 'var(--ink)',
-            }}>{k}</button>
-          );
-        })}
+      {/* In the flow, not pinned to the bottom: with the keyboard up it sits
+          just above the keys instead of underneath them. */}
+      <div>
+        <button className="btn btn-primary" disabled={!canSave} onClick={() => void handleSave()}>{saveLabel}</button>
+        <div aria-live="polite" style={{ textAlign: 'center', fontSize: 12, color: 'var(--ink-faint)', marginTop: 8, minHeight: 16 }}>
+          {saveBlocker ?? ''}
+        </div>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--disabled)' }}>your keyboard works here too</div>
-
-      <button className="btn btn-primary" disabled={!canSave} onClick={() => void handleSave()}>{saveLabel}</button>
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyKey, appendDigitOrDot, centsToAmountStr, formatAmountDisplay,
-  parseAmountStrToCents, sanitizeDecimalString,
+  centsToAmountStr, nextAmountStr, parseAmountStrToCents, sanitizeDecimalString,
 } from './amount';
 
-// The amount keypad is the app's only writer of money values, so its
+// The amount field is the app's only writer of money values, so its
 // string ⇄ cents boundary gets exhaustive treatment: every regression here
 // is a wrong number in someone's balance.
 
-const type = (keys: string) => [...keys].reduce((s, k) => applyKey(s, k), '');
+// Types one character at a time, the way a keyboard feeds the field.
+const type = (keys: string, decimals = 2) =>
+  [...keys].reduce((s, k) => nextAmountStr(s, s + k, decimals), '');
 
 describe('parseAmountStrToCents', () => {
   it('round-trips every cent value up to $1,000.00 exactly', () => {
@@ -17,7 +18,7 @@ describe('parseAmountStrToCents', () => {
     }
   });
 
-  it('round-trips sampled values across the full 7-digit keypad range', () => {
+  it('round-trips sampled values across the full 7-digit entry range', () => {
     for (let cents = 100_001; cents <= 9_999_999; cents += 997) {
       expect(parseAmountStrToCents(centsToAmountStr(cents))).toBe(cents);
     }
@@ -48,8 +49,8 @@ describe('parseAmountStrToCents', () => {
   });
 });
 
-describe('keypad entry (applyKey / appendDigitOrDot)', () => {
-  it('builds the common 3-tap amount', () => {
+describe('amount field entry (nextAmountStr)', () => {
+  it('builds a typed amount', () => {
     expect(parseAmountStrToCents(type('90'))).toBe(9000);
     expect(parseAmountStrToCents(type('4835'))).toBe(483500);
   });
@@ -77,30 +78,49 @@ describe('keypad entry (applyKey / appendDigitOrDot)', () => {
     expect(type('12345.678')).toBe('12345.67');
   });
 
-  it('backspaces one character at a time, including off the empty string', () => {
-    expect(applyKey('12.50', '⌫')).toBe('12.5');
-    expect(applyKey('1', '⌫')).toBe('');
-    expect(applyKey('', '⌫')).toBe('');
+  it('accepts deletions down to the empty string', () => {
+    expect(nextAmountStr('12.50', '12.5')).toBe('12.5');
+    expect(nextAmountStr('1', '')).toBe('');
+  });
+
+  it('reads a decimal comma as a point (locale keyboards)', () => {
+    expect(type('12,5')).toBe('12.5');
+    expect(parseAmountStrToCents(type('12,50'))).toBe(1250);
+    expect(type(',5')).toBe('0.5');
+  });
+
+  it('treats commas as thousands separators when a point is present (paste)', () => {
+    expect(nextAmountStr('', '1,234.56')).toBe('1234.56');
+    expect(nextAmountStr('', '$48.50')).toBe('48.50');
+  });
+
+  it('refuses a paste that exceeds 7 digits instead of truncating it', () => {
+    expect(nextAmountStr('12', '123456789')).toBe('12');
   });
 
   it('never produces a string that parses to a negative or fractional cent', () => {
-    // Fuzz the keypad the way a thumb would: deterministic PRNG, no Math.random.
+    // Fuzz the field the way a thumb would: deterministic PRNG, no Math.random.
+    // Each step is an append, a delete, or a mid-string insert of any key a
+    // decimal keyboard (or a sloppy paste) can produce.
     let seed = 7;
     const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
-    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', ',', '-', ' '];
     for (let round = 0; round < 2000; round++) {
       let s = '';
       const len = 1 + Math.floor(rand() * 12);
-      for (let i = 0; i < len; i++) s = applyKey(s, keys[Math.floor(rand() * keys.length)]);
-      expect(s).toMatch(/^$|^\d{0,7}(\.\d{0,2})?$/);
-      const cents = parseAmountStrToCents(s);
-      expect(Number.isSafeInteger(cents)).toBe(true);
-      expect(cents).toBeGreaterThanOrEqual(0);
+      for (let i = 0; i < len; i++) {
+        const k = keys[Math.floor(rand() * keys.length)];
+        const op = rand();
+        const at = Math.floor(rand() * (s.length + 1));
+        const raw = op < 0.6 ? s + k : op < 0.8 ? s.slice(0, -1) : s.slice(0, at) + k + s.slice(at);
+        s = nextAmountStr(s, raw);
+        expect(s).toMatch(/^$|^\d{1,7}(\.\d{0,2})?$/);
+        expect(s.replace('.', '').length).toBeLessThanOrEqual(7);
+        const cents = parseAmountStrToCents(s);
+        expect(Number.isSafeInteger(cents)).toBe(true);
+        expect(cents).toBeGreaterThanOrEqual(0);
+      }
     }
-  });
-
-  it('appendDigitOrDot is what applyKey delegates to for non-backspace keys', () => {
-    expect(applyKey('1', '2')).toBe(appendDigitOrDot('1', '2'));
   });
 });
 
@@ -125,38 +145,20 @@ describe('sanitizeDecimalString (custom-split inputs)', () => {
   });
 });
 
-describe('formatAmountDisplay', () => {
-  it('shows $0.00 before anything is typed', () => {
-    expect(formatAmountDisplay('')).toBe('$0.00');
-  });
-  it('renders the string as typed, mid-entry', () => {
-    expect(formatAmountDisplay('48')).toBe('$48');
-    expect(formatAmountDisplay('48.')).toBe('$48.');
-    expect(formatAmountDisplay('48.5')).toBe('$48.50');
-    expect(formatAmountDisplay('.5')).toBe('$0.50');
-  });
-  it('never shows a value that disagrees with what will be saved', () => {
-    for (let cents = 0; cents <= 20_000; cents += 1) {
-      const str = centsToAmountStr(cents);
-      const shown = formatAmountDisplay(str);
-      expect(shown).toBe(`$${str}`);
-      expect(parseAmountStrToCents(str)).toBe(cents);
-    }
-  });
-});
-
 // ---- multi-currency (feature 01): decimals per currency, rates as nanos ----
 import {
-  sanitizeDecimalString as sanitize, appendDigitOrDot as append, applyKey as key,
+  sanitizeDecimalString as sanitize,
   parseAmountStrToMinor, minorToAmountStr, parseRateToNanos, nanosToRateString,
 } from './amount';
 
 describe('amount entry in a zero-decimal currency (JPY)', () => {
-  it('the keypad ignores "." and allows no decimals', () => {
-    expect(append('12', '.', 0)).toBe('12');
-    expect(append('', '.', 0)).toBe('');
-    expect(append('12', '3', 0)).toBe('123');
-    expect(key('120', '⌫', 0)).toBe('12');
+  it('the amount field ignores "." and "," and allows no decimals', () => {
+    expect(type('12.', 0)).toBe('12');
+    expect(type('.', 0)).toBe('');
+    expect(type('12,', 0)).toBe('12');
+    expect(type('123', 0)).toBe('123');
+    expect(nextAmountStr('120', '12', 0)).toBe('12');
+    expect(nextAmountStr('', '1,200', 0)).toBe('1200');   // pasted with grouping
   });
   it('sanitizing drops any decimal part', () => {
     expect(sanitize('1,200.50', 0)).toBe('1200');

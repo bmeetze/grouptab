@@ -48,12 +48,14 @@ payer is excluded), and a hand-checked three-person weekend trip.
 
 ### Amount entry — `src/lib/amount.test.ts`
 
-`src/lib/amount.ts` is the **only** place a float touches money: the keypad
-produces a typed string, and `parseAmountStrToCents` converts it. The evals
-round-trip every cent value up to $1,000.00 exactly, sample the rest of the
-7-digit keypad range, pin the binary-float traps (`4.35 → 435`, not 434), and
-fuzz 2,000 random keypad sequences to prove no reachable input yields a
-negative or fractional cent.
+`src/lib/amount.ts` is the **only** place a float touches money: the amount
+field produces a typed string (`nextAmountStr` shapes every keystroke or
+paste), and `parseAmountStrToCents` converts it. The evals round-trip every
+cent value up to $1,000.00 exactly, sample the rest of the 7-digit entry
+range, pin the binary-float traps (`4.35 → 435`, not 434), cover decimal-comma
+keyboards, and fuzz 2,000 random edit sequences (appends, deletes, mid-string
+inserts, stray characters) to prove no reachable input yields a negative or
+fractional cent.
 
 ### Formatting and export — `src/lib/format.test.ts`, `src/lib/csv.test.ts`
 

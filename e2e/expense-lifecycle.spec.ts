@@ -23,7 +23,7 @@ test('subset split, custom split validation, edit, flag, comment, delete', async
   // --- subset split: tap Kai out, $50 splits two ways ----------------------
   await page.getByRole('link', { name: '+', exact: true }).click();
   await typeAmount(page, '50');
-  await page.getByPlaceholder('What for? (required)').fill('Two of us');
+  await page.getByLabel('What for').fill('Two of us');
   await page.getByRole('button', { name: 'Toggle Kai' }).click();
   await expect(page.getByText('$25.00 each')).toBeVisible();
   await page.getByRole('button', { name: 'Save expense' }).click();
@@ -36,10 +36,10 @@ test('subset split, custom split validation, edit, flag, comment, delete', async
   // --- custom split: save stays blocked until the amounts add up ----------
   await page.getByRole('link', { name: '+', exact: true }).click();
   await typeAmount(page, '30');
-  await page.getByPlaceholder('What for? (required)').fill('Custom split');
+  await page.getByLabel('What for').fill('Custom split');
   await page.getByRole('button', { name: /^Split equally/ }).click();
 
-  const customInputs = page.getByPlaceholder('0.00');
+  const customInputs = page.getByRole('textbox', { name: /'s share$/ });
   await customInputs.nth(0).fill('10');
   await customInputs.nth(1).fill('5');
   await expect(page.getByText('$15.00 of $30.00 assigned')).toBeVisible();
@@ -53,14 +53,14 @@ test('subset split, custom split validation, edit, flag, comment, delete', async
   // --- edit: $90 → $60, split evenly by hand; "edited" marker appears ------
   await page.getByText('Groceries').click();
   await page.getByRole('button', { name: '✎ edit' }).click();
-  await clearAmount(page, 5);                      // "90.00" → ""
+  await clearAmount(page);                         // "90.00" → ""
   await typeAmount(page, '60');
   // Edit mode opens in custom mode with the stored shares (30/30/30), which
   // no longer add up to the new total — save must be blocked until they do.
   await expect(page.getByText('$90.00 of $60.00 assigned')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled();
 
-  const editInputs = page.getByPlaceholder('0.00');
+  const editInputs = page.getByRole('textbox', { name: /'s share$/ });
   for (let i = 0; i < 3; i++) await editInputs.nth(i).fill('20');
   await expect(page.getByText('adds up to $60.00 ✓')).toBeVisible();
   await page.getByRole('button', { name: 'Save changes' }).click();

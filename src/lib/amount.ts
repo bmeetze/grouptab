@@ -9,7 +9,7 @@
 
 // Strips a typed value down to at most one '.', at most 2 decimal digits,
 // and no redundant leading zeros ("00" -> "0", "05" -> "5") — the same shape
-// rules the on-screen/physical keypad enforces for the amount.
+// rules the amount field enforces (nextAmountStr builds on this).
 //
 // `decimals` is the currency's minor-unit exponent (currency.ts). It defaults
 // to 2 so USD callers are unchanged; 0 (JPY, KRW, ISK) drops any '.' part.
@@ -23,31 +23,24 @@ export function sanitizeDecimalString(raw: string, decimals = 2): string {
   return parts.length === 1 ? intPart : `${intPart}.${parts[1].slice(0, decimals)}`;
 }
 
-// Ported from the prototype's tapKey: one '.' max, ≤2 decimals, replaces a
-// lone leading '0' rather than building "05", caps total digits at 7.
-export function appendDigitOrDot(amountStr: string, k: string, decimals = 2): string {
-  if (k === '.') {
-    if (decimals === 0) return amountStr;
-    return amountStr.includes('.') ? amountStr : `${amountStr || '0'}.`;
-  }
-  const dec = amountStr.split('.')[1];
-  if (dec !== undefined && dec.length >= decimals) return amountStr;
-  if (amountStr.replace('.', '').length >= 7) return amountStr;
-  return amountStr === '0' ? k : amountStr + k;
-}
+// The amount field's onChange: turns whatever the system keyboard (or a
+// paste) produced into the next amount string. Same shape rules the old
+// in-app keypad enforced — one '.', at most `decimals` decimals, no "05",
+// at most 7 digits — plus two things a real keyboard needs:
+//   - a decimal comma becomes a point (iOS/Android decimal pads show ',' in
+//     many locales); when a '.' is also present, commas are thousands
+//     separators and are dropped (always, in a zero-decimal currency);
+//   - a bare leading point gets its zero (".5" -> "0.5").
+// An edit that would exceed 7 digits is refused: `prev` comes back unchanged.
+export const MAX_AMOUNT_DIGITS = 7;
 
-export function applyKey(amountStr: string, k: string, decimals = 2): string {
-  return k === '⌫' ? amountStr.slice(0, -1) : appendDigitOrDot(amountStr, k, decimals);
-}
-
-// '' -> $0.00; otherwise renders the string as-typed, padding the decimal
-// part to 2 digits once a '.' is present ("48.5" -> "$48.50").
-export function formatAmountDisplay(amountStr: string, decimals = 2, symbol = '$'): string {
-  if (!amountStr) return decimals === 0 ? `${symbol}0` : `${symbol}0.${'0'.repeat(decimals)}`;
-  if (amountStr.endsWith('.')) return `${symbol}${amountStr}`;
-  const [intPart, decPart] = amountStr.split('.');
-  const whole = intPart === '' ? '0' : intPart;
-  return decPart === undefined ? `${symbol}${whole}` : `${symbol}${whole}.${decPart.padEnd(decimals, '0')}`;
+export function nextAmountStr(prev: string, raw: string, decimals = 2): string {
+  const commasAreGrouping = decimals === 0 || raw.includes('.');
+  const normalized = raw.replace(/,/g, commasAreGrouping ? '' : '.');
+  let v = sanitizeDecimalString(normalized, decimals);
+  if (v.startsWith('.')) v = `0${v}`;
+  if (v.replace('.', '').length > MAX_AMOUNT_DIGITS) return prev;
+  return v;
 }
 
 // The only places a string amount becomes integer minor units, and back.

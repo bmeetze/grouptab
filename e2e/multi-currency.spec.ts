@@ -16,7 +16,7 @@ test('log pesos with a pre-filled rate, see ≈USD, settle in USD, change the ra
   await page.getByRole('button', { name: 'MXN', exact: true }).click();
   await expect(page.getByLabel('USD per MXN')).toHaveValue('0.0586');
   await typeAmount(page, '900');
-  await page.getByPlaceholder('What for? (required)').fill('Tacos');
+  await page.getByLabel('What for').fill('Tacos');
   await page.getByRole('button', { name: 'Save expense' }).click();
 
   // Feed: original amount, ≈USD beneath (90000 centavos × 0.0586 = $52.74).
@@ -56,10 +56,10 @@ test('a zero-decimal currency takes whole units only', async ({ page }) => {
   await page.getByRole('link', { name: '+', exact: true }).click();
   await page.getByRole('button', { name: /Change currency/ }).click();
   await page.getByRole('button', { name: 'JPY', exact: true }).click();
-  await expect(page.getByRole('button', { name: '.', exact: true })).toBeDisabled();
-  await typeAmount(page, '1200');
-  await expect(page.getByText('¥1200')).toBeVisible();
-  await page.getByPlaceholder('What for? (required)').fill('Ramen');
+  // No minor unit: the decimal point is ignored as it's typed.
+  await typeAmount(page, '12.00');
+  await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('1200');
+  await page.getByLabel('What for').fill('Ramen');
   await page.getByRole('button', { name: 'Save expense' }).click();
   await expect(page.getByText('¥1,200')).toBeVisible();
   await expect(page.getByText('≈ $8.04')).toBeVisible();

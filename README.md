@@ -5,7 +5,7 @@ Split group-trip expenses. No accounts, no paywall, no app install — a trip li
 **Live:** https://bmeetze.github.io/grouptab/
 
 - Create a trip, share the link, friends claim their names.
-- 3-tap expense entry; equal, subset, or custom splits (integer cents, no float math).
+- Fast expense entry — amount, what for, save, all on the system keyboard; equal, subset, or custom splits (integer cents, no float math).
 - Settle up: minimized transfer list, DRAFT until everyone says "all my expenses are in".
 - CSV export = backup. Supabase free tier + GitHub Pages = $0/month.
 - iOS tip: add GroupTab to your home screen *before* claiming your name — Safari and installed PWAs don't share storage, so claim from the installed app.
